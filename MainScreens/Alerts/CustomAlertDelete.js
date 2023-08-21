@@ -32,14 +32,16 @@ const CustomModalDelete = ({
                             <Text style={styles.modalButtonText2}>{buttonText}</Text>
                         </TouchableOpacity>
 
+                      
                         <TouchableOpacity
-                            style={styles.modalButton2}
-                            onPress={buttonAction2} // This should be buttonAction2 instead of buttonAction
-                            activeOpacity={0.6}
+                        onPress={buttonAction2} // This should be buttonAction2 instead of buttonAction
+                        
                         >
-                            <Text style={styles.modalButtonText}>{buttonText2}</Text>
-                        </TouchableOpacity>
-
+                        <Image
+          style={styles.closeButton}
+          source={require("../../assets/AppIcons/exiticon.png")}
+        />
+        </TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -50,25 +52,33 @@ const CustomModalDelete = ({
 const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
-        fontFamily: "GalanoGrotesque-SemiBold",
+        fontFamily: "GalanoGrotesque-Medium",
         textAlign: "center",
         color: "#0089C2",
         marginTop: 31,
     },
+    closeButton: {
+        width: 35,
+        height: 35,
+        resizeMode: "contain",
+        marginTop: -75,
+        marginLeft: 274,
+    },
     modalButton: {
         backgroundColor: "#5AC0EB",
         borderRadius: 16,
-        width: 110,
+        width: 200,
         height: 40,
         marginTop: 85,
         marginLeft: 30,
         alignSelf: "flex-start",
-        position: "absolute"
+        position: "absolute",
+        alignSelf: "center"
 
     },
     modalButtonText: {
         fontSize: 18,
-        fontFamily: "GalanoGrotesque-Medium",
+        fontFamily: "GalanoGrotesque-Bold",
         textAlign: "center",
         marginTop: 13,
         color: "white",
@@ -81,25 +91,24 @@ const styles = StyleSheet.create({
         width: 110,
         height: 40,
         marginTop: 85,
-        position: "absolute"
+        position: "absolute",
+        alignSelf: "center"
     },
     modalButtonText2: {
-        fontSize: 18,
-        fontFamily: "GalanoGrotesque-Bold",
+        fontSize: 20,
+        fontFamily: "GalanoGrotesque-Medium",
         textAlign: "center",
-        marginTop: 13,
-        color: "#0089C2",
+        marginTop: 12,
+        color: "white",
     },
 
     modalWrapper: {
         backgroundColor: 'white',
-        borderRadius: 28,
-        width: 290,
+        borderRadius: 20,
+        width: 300,
         height: 150,
         position: 'absolute', // Position it absolutely
         alignSelf: "center",
-        borderColor: "#5AC0EB",
-        borderWidth: 0.5,
     },
 
     overlay: {
@@ -108,18 +117,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    closeButton: {
-        position: 'absolute',
-        top: -4,
-        right: -10,
-        zIndex: 1,
-    },
-
-    closeImage: {
-        width: 40,
-        height: 40,
-    },
-
 })
 
 export default CustomModalDelete;

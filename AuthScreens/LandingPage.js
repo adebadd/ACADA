@@ -8,7 +8,7 @@ import { useState } from "react";
 import { firebase } from "../config";
 import { Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Video } from "expo-av";
 import videoFile from '../assets/AnimatedGradient.mp4';
 import SignupPage from "./SignupPage";
@@ -19,7 +19,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 SplashScreen.hideAsync();
 
-const LandingPage = ({navigation}) => {
+const LandingPage = ({ navigation }) => {
   const [fontsLoaded] = useFonts({
     "GalanoGrotesque-Medium": require("../assets/Fonts/GalanoGrotesque-Medium.ttf"),
     "GalanoGrotesque-Light": require("../assets/Fonts/GalanoGrotesque-Light.ttf"),
@@ -37,8 +37,8 @@ const LandingPage = ({navigation}) => {
   if (!fontsLoaded) {
     return null;
   }
-  return(
-    <View style={styles.backgroundVideo}  onLayout={onLayoutRootView}>
+  return (
+    <View style={styles.backgroundVideo} onLayout={onLayoutRootView}>
       <Video
         source={videoFile}
         shouldPlay
@@ -53,40 +53,40 @@ const LandingPage = ({navigation}) => {
         <Text style={styles.signupsubText}>Sign up using email</Text>
 
         <TouchableOpacity activeOpacity={0.76} style={styles.signupButton} onPress={() => navigation.navigate(SignupPage)}>
-        <Text style={styles.signupButtonText}>Sign Up</Text>
-      </TouchableOpacity>
+          <Text style={styles.signupButtonText}>Sign Up</Text>
+        </TouchableOpacity>
       </View>
       <Text style={styles.signupsubText2}>Or signup with</Text>
-      <View style= {styles.footerText}>
+      <View style={styles.footerText}>
         <Text>Already have an account?</Text>
-        <TouchableOpacity activeOpacity={0.8}  onPress={() => navigation.navigate(LoginPage)}>
-          <Text style= {styles.highlightedText} > Login</Text>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate(LoginPage)}>
+          <Text style={styles.highlightedText} > Login</Text>
         </TouchableOpacity>
 
       </View>
-   
+
       <View style={styles.socialImages}>
-        
-          <TouchableOpacity activeOpacity={0.76}>
-            <Image
-              style={styles.footerImages}
-              source={require("../assets/SocialIcons/googleLogo.png")}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.76}>
-            <Image
-              style={styles.footerImages}
-              source={require("../assets/SocialIcons/twitterLogo.png")}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.76}>
-            <Image
-              style={styles.footerImages}
-              source={require("../assets/SocialIcons/linkedInLogo.png")}
-            />
-          </TouchableOpacity>  
-          
-        </View>
+
+        <TouchableOpacity activeOpacity={0.76}>
+          <Image
+            style={styles.footerImages}
+            source={require("../assets/SocialIcons/googleLogo.png")}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.76}>
+          <Image
+            style={styles.footerImages}
+            source={require("../assets/SocialIcons/twitterLogo.png")}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.76}>
+          <Image
+            style={styles.footerImages}
+            source={require("../assets/SocialIcons/linkedInLogo.png")}
+          />
+        </TouchableOpacity>
+
+      </View>
     </View>
   );
 };
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     height: 44,
     width: 230,
-    borderRadius: 40 ,
+    borderRadius: 40,
     shadowColor: "#01668B",
     shadowOffset: { width: 1, height: 2 },
     shadowOpacity: 0.4,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     fontFamily: "GalanoGrotesque-Light",
     color: "white",
     marginTop: 14,
-    
+
   },
   footerText: {
     fontSize: 16,
@@ -166,13 +166,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     position: "absolute",
-    marginTop: 750,
+    position: 'absolute',
+    bottom: 0,
+    marginBottom: 70, // Add margin to ensure text isn't too close to the edge
     alignSelf: "center"
   },
   highlightedText: {
-   color: "#01668B",
-   textDecorationLine : 'underline',
- 
+    color: "#01668B",
+    textDecorationLine: 'underline',
+
   },
 
   socialImages: {
@@ -180,7 +182,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignContent: "center",
     alignSelf: "center",
-    
+
   },
 
   footerImages: {

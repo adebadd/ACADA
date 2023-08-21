@@ -14,109 +14,105 @@ const CustomModalUpdate = ({
 }) => {
   return (
     <Modal visible={isVisible} animationType="fade" transparent={true}>
-      <View style={styles.overlay}>
-        <View style={styles.modalWrapper}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>{title}</Text>
+         <View style={styles.overlay}>
+                <View style={styles.modalWrapper}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>{title}</Text>
 
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={buttonAction2} // Swap the buttonAction and buttonAction2
-              activeOpacity={0.9}
-            >
-              <Text style={styles.modalButtonText}>{buttonText}</Text> 
-            </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.modalButton}
+                            onPress={buttonAction2}
+                            activeOpacity={0.6}
+                        >
+                            <Text style={styles.modalButtonText2}>{buttonText}</Text>
+                        </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.modalButton2}
-              onPress={buttonAction} // Swap the buttonAction and buttonAction2
-              activeOpacity={0.9}
-            >
-              <Text style={styles.modalButtonText2}>{buttonText2}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
+                      
+                        <TouchableOpacity
+                        onPress={buttonAction} // This should be buttonAction2 instead of buttonAction
+                        
+                        >
+                        <Image
+          style={styles.closeButton}
+          source={require("../../assets/AppIcons/exiticon.png")}
+        />
+        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-
- 
   modalTitle: {
-    fontSize: 20,
-    fontFamily: "GalanoGrotesque-SemiBold",
-    textAlign: "center",
-    color: "#0089C2",
-    marginTop: 31,
-},
-modalButton: {
-    backgroundColor: "#5AC0EB",
-    borderRadius: 16,
-    width: 110,
-    height: 40,
-    marginTop: 85,
-    marginLeft: 30,
-    alignSelf: "flex-start",
-    position: "absolute"
+      fontSize: 20,
+      fontFamily: "GalanoGrotesque-Medium",
+      textAlign: "center",
+      color: "#0089C2",
+      marginTop: 31,
+  },
+  closeButton: {
+      width: 35,
+      height: 35,
+      resizeMode: "contain",
+      marginTop: -80,
+      marginLeft: 292,
+  },
+  modalButton: {
+      backgroundColor: "#5AC0EB",
+      borderRadius: 16,
+      width: 200,
+      height: 40,
+      marginTop: 85,
+      marginLeft: 30,
+      alignSelf: "flex-start",
+      position: "absolute",
+      alignSelf: "center"
 
-},
-modalButtonText2: {
-    fontSize: 18,
-    fontFamily: "GalanoGrotesque-Medium",
-    textAlign: "center",
-    marginTop: 13,
-    color: "white",
-},
+  },
+  modalButtonText: {
+      fontSize: 18,
+      fontFamily: "GalanoGrotesque-Bold",
+      textAlign: "center",
+      marginTop: 13,
+      color: "white",
+  },
 
-modalButton2: {
-    backgroundColor: "#5AC0EB",
-    borderRadius: 16,
-    marginLeft: 150,
-    width: 110,
-    height: 40,
-    marginTop: 85,
-    position: "absolute"
-},
-modalButtonText: {
-    fontSize: 18,
-    fontFamily: "GalanoGrotesque-Bold",
-    textAlign: "center",
-    marginTop: 13,
-    color: "#0089C2",
-},
+  modalButton2: {
+      backgroundColor: "#5AC0EB",
+      borderRadius: 16,
+      marginLeft: 150,
+      width: 110,
+      height: 40,
+      marginTop: 85,
+      position: "absolute",
+      alignSelf: "center"
+  },
+  modalButtonText2: {
+      fontSize: 20,
+      fontFamily: "GalanoGrotesque-Medium",
+      textAlign: "center",
+      marginTop: 12,
+      color: "white",
+  },
 
-modalWrapper: {
-    backgroundColor: 'white',
-    borderRadius: 28,
-    width: 290,
-    height: 150,
-    position: 'absolute', // Position it absolutely
-    alignSelf: "center",
-    borderColor: "#5AC0EB",
-    borderWidth: 0.5,
-},
+  modalWrapper: {
+      backgroundColor: 'white',
+      borderRadius: 20,
+      width: 320,
+      height: 150,
+      position: 'absolute', // Position it absolutely
+      alignSelf: "center",
+  },
 
-overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-},
-closeButton: {
-    position: 'absolute',
-    top: -4,
-    right: -10,
-    zIndex: 1,
-},
-
-closeImage: {
-    width: 40,
-    height: 40,
-},
-
-
+  overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+  },
 })
+
 
 export default CustomModalUpdate;

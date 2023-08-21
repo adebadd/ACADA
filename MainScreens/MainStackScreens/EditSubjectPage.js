@@ -979,8 +979,7 @@ const EditSubjectPage = ({ route }) => {
               <CustomModalUpdate
                   isVisible={isUpdateModalVisible}
                   closeModal={closeModal}
-                  title=" Are you sure you want to update this subject?
-          "
+                  title={`Are you sure you want to\n update ${subject.title}'s details?`}
                   buttonText={'Update'}
                   buttonText2={'Cancel'}
                   buttonAction={() => setUpdateModalVisible(false)} // closeModal action is assigned here
@@ -990,7 +989,7 @@ const EditSubjectPage = ({ route }) => {
               <CustomModalDelete
                   isVisible={isDeleteModalVisible}
                   closeModal={() => setDeleteModalVisible(false)}
-                  title={'Are you sure you want\n to delete this subject?'}
+                  title={`Are you sure you want\n to delete ${subject.title}?`}
                   buttonText={'Delete'}
                   buttonAction={deleteAction} // delete action is assigned here
                   buttonText2={'Cancel'}

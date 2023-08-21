@@ -62,7 +62,16 @@ const EditTaskPage = ({ navigation, route }) => {
   };  
 
   const handleModalButtonAction = () => {
-    closeModal();
+    setModalVisible(false);
+  };
+  
+
+
+  const [updateAction, setUpdateAction] = useState(null);
+
+
+  const handleColorPress = (color) => {
+      setSelectedColor(color);
   };
 
 
@@ -212,17 +221,14 @@ const EditTaskPage = ({ navigation, route }) => {
   ) => {
     // Add your new check here
     if (Topic && Topic.length > 30) {
-      Alert.alert(
-        'Task Topic Too Long',
-        'Please enter a task topic with no more than 30 characters.',
-        [
-          { text: 'OK' },
-        ],
-        { cancelable: false },
-      );
+      setModalTitle('Please enter a task topic with no more than 30 characters.');
+      setModalButtonText('OK');
+      setModalVisible(true);
       return;
-    }
+      
+  }
 
+   
     const selectedSubjectData = subjects.find(
       (item) => item.title === selectedSubject
     );
@@ -651,15 +657,15 @@ const EditTaskPage = ({ navigation, route }) => {
 />
        
 <CustomModal
-        isVisible={modalVisible}
-        closeModal={closeModal}
-        title={modalTitle}
-        buttonText={modalButtonText}
-        buttonAction={handleModalButtonAction}
-        hasCloseButton={true}
-        width={modalWidth} // custom width
-        height={modalHeight} // custom height
-      />
+  isVisible={modalVisible}
+  closeModal={handleModalButtonAction} // Call the function to close the modal
+  title={modalTitle}
+  buttonText={modalButtonText}
+  buttonAction={handleModalButtonAction}
+  hasCloseButton={true}
+  width={modalWidth}
+  height={modalHeight}
+/>
 
 <CustomModalSmall
         isVisibleSmall={modalVisibleSmall}
@@ -671,15 +677,14 @@ const EditTaskPage = ({ navigation, route }) => {
       />
       
       <CustomModalUpdate
-  isVisible={isUpdateModalVisible}
-  closeModal={closeModal}
-  title=" Are you sure you want to update this subject?
-  "
-  buttonText="Cancel"
-  buttonText2="Update"
-  buttonAction={closeModal}
-  buttonAction2={() => setUpdateModalVisible(false)}
-/>
+                  isVisible={isUpdateModalVisible}
+                  closeModal={closeModal}
+                  title={`Are you sure you want to\n update this task?`}
+                  buttonText={'Update'}
+                  buttonText2={'Cancel'}
+                  buttonAction={() => setUpdateModalVisible(false)} // closeModal action is assigned here
+                  buttonAction2={updateTask} // delete action is assigned here
+              />
 
 
       </View>

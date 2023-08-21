@@ -20,12 +20,16 @@ import * as Font from "expo-font";
 import { firebase } from "../config";
 import { Video } from 'expo-av';
 import videoFile from '../assets/AnimatedGradient.mp4';
-
+import { Dimensions } from 'react-native';
 
 
 
 const SignupPage = ({ navigation }) => {
 
+    const windowHeight = Dimensions.get('window').height;
+    const windowWidth = Dimensions.get('window').width; // Get the window width
+    const signupButtonMargin = windowHeight >= 926 ? 260 : 190; // Adjust the values as needed
+    const passwordToggleMarginLeft = windowWidth >= 428 ? 316 : 305; // Adjust the values as needed
 
 
     const [password, setPassword] = useState("");
@@ -160,7 +164,7 @@ const SignupPage = ({ navigation }) => {
                             />
                         </View>
 
-                        <View style={styles.passwordToggleContainer}>
+                        <View style={[styles.passwordToggleContainer, { marginLeft: passwordToggleMarginLeft }]}>
                             <TouchableOpacity activeOpacity={1} onPress={toggleShowPassword}>
                                 <Image
                                     source={
@@ -178,7 +182,7 @@ const SignupPage = ({ navigation }) => {
             <TouchableOpacity
                 onPress={() => signupUser(email, password, username)}
                 activeOpacity={0.76}
-                style={[styles.loginButton]}
+                style={[styles.loginButton, { marginBottom: signupButtonMargin }]}
             >
                 <Text style={styles.loginButtonText}>Sign up</Text>
             </TouchableOpacity>
@@ -277,8 +281,10 @@ const styles = StyleSheet.create({
         alignSelf: "center",
         height: 44,
         width: 266,
-        marginBottom: 140,
         borderRadius: 40,
+        top: 0,
+        bottom: 0, // Adjust this value to move the button higher or lower
+        marginBottom: 200, // Add margin to ensure the button isn't too close to the edge
         shadowColor: "#01668B",
         shadowOffset: { width: 1, height: 4 },
         shadowOpacity: 0.4,
@@ -319,7 +325,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         flexDirection: 'row',
         position: "absolute",
-        marginTop: 750,
+        bottom: 0,
+        marginBottom: 70,
         alignSelf: "center"
       },
       highlightedText: {
@@ -335,8 +342,9 @@ const styles = StyleSheet.create({
       passwordToggleContainer: {
         flex: 0,
         position: "absolute",
-        marginTop: 216,
-        marginLeft: 275,
+        bottom: 0,
+        marginBottom: 30,
+        marginLeft: 310,
     
       },
       passwordImages: {

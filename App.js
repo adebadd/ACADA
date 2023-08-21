@@ -27,7 +27,6 @@ import { useFonts } from 'expo-font';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback } from 'react';
 import { AppState } from 'react-native';
-import "firebase/auth";
 
 const Stack = createNativeStackNavigator();
 
@@ -118,86 +117,40 @@ function MainStack() {
   );
 }
 
-
 function AppContent() {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState(null);
-  const [ appState, setAppState] = useState(AppState.currentState); // New state
 
-  // Prevent the splash screen from hiding until we're ready
+  // Handle user state changes
+  function onAuthStateChanged(user) {
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }
+
   useEffect(() => {
-    SplashScreen.preventAutoHideAsync();
+    const subscriber = firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        setUser(null);
+      }
+      if (initializing) setInitializing(false);
+    });
+    return subscriber; // unsubscribe on unmount
   }, []);
 
-  const onAuthStateChanged = async (user) => {
-    if (user) {
-      setUser(user);
-      // Store user authentication state locally
-      try {
-        await AsyncStorage.setItem('userData', JSON.stringify(user));
-      } catch (error) {
-        console.log('Error storing user data:', error);
-      }
-    } else {
-      setUser(null);
-      // Remove the user authentication state from AsyncStorage
-      try {
-        await AsyncStorage.removeItem('userData');
-      } catch (error) {
-        console.log('Error removing user data:', error);
-      }
-    }
-    if (initializing) setInitializing(false);
-    // Hide the splash screen once we're done
-    SplashScreen.hideAsync();
-  };
+  if (initializing) return null;
 
-
-    const checkUserAuthentication = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem('userData');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-        }
-      } catch (error) {
-        console.log('Error reading user data:', error);
-      }
-      setInitializing(false);
-    };
-
-    useEffect(() => {
-      const subscriber = firebase.auth().onAuthStateChanged(onAuthStateChanged);
-      checkUserAuthentication();
-      return () => subscriber();
-    }, []);
-  
-    useEffect(() => {
-      // Subscribe to app state changes
-      AppState.addEventListener('change', handleAppStateChange);
-  
-      return () => {
-        // Unsubscribe when the component is unmounted
-        AppState.removeEventListener('change', handleAppStateChange);
-      };
-    }, []);
-  
-    const handleAppStateChange = (nextAppState) => {
-      if (appState.match(/inactive|background/) && nextAppState === 'active') {
-        // App has come to the foreground, check user authentication
-        checkUserAuthentication();
-      }
-      setAppState(nextAppState);
-    };
-  return (
-    <NavigationContainer>
-      {user ? <MainStack /> : <AuthStack />}
-    </NavigationContainer>
-  );
+  return user ? <MainStack /> : <AuthStack />;
 }
 
 export default function App() {
-  return <AppContent />;
-}
+  return (
+    <NavigationContainer>
+      <AppContent />
+    </NavigationContainer>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

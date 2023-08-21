@@ -46,10 +46,10 @@ const styles = StyleSheet.create ({
 
   modalTitle: {
     fontSize: 20,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "#0089C2",
-    marginTop: 26,
+    marginTop: 32,
   },
   modalButton: {
     backgroundColor: "#5AC0EB",
@@ -69,9 +69,9 @@ const styles = StyleSheet.create ({
   
   modalWrapper: {
     backgroundColor: 'white',
-    borderRadius: 28,
-    width: 320,
-    height: 150,
+    borderRadius: 16,
+    width: 330,
+    height: 160,
     position: 'absolute', // Position it absolutely
     top: '50%', // Center it vertically
     left: '50%', // Center it horizontally

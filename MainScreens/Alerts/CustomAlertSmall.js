@@ -43,7 +43,7 @@ const styles = StyleSheet.create ({
 
   modalTitle: {
     fontSize: 20,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "#0089C2",
     marginTop: 26,
@@ -58,7 +58,7 @@ const styles = StyleSheet.create ({
   },
   modalButtonText: {
     fontSize: 18,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-Light",
     textAlign: "center",
     marginTop: 13,
     color: "white",
