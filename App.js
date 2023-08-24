@@ -26,7 +26,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback } from 'react';
-import { AppState } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 

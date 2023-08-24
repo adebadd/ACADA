@@ -22,16 +22,52 @@ import Swiper from "react-native-deck-swiper";
 import Modal from "react-native-modal";
 
 const itemWidth = Dimensions.get("window").width / 5;
-const SchedulePage = ({}) => {
+const SchedulePage = ({route}) => {
   const [tasks, setTasks] = useState([]);
   const navigation = useNavigation();
   const [selectedDate, setSelectedDate] = useState(moment().format("YYYY-MM-DD"));
   const [daysAgo, setDaysAgo] = useState("Today");
   const [currentMonth, setCurrentMonth] = useState(moment().format("MMMM YYYY"));
   const flatListRef = useRef(null);
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
+
+
+  useEffect(() => {
+    if (!initialScrollDone) {
+      flatListRef.current.scrollToIndex({
+        index: selectedIndex,
+        animated: true,
+     });
+        setInitialScrollDone(true);
+    }
+}, []);
+
+useEffect(() => {
+    if (route.params?.selectedTaskDate) {
+        const dateString = moment(route.params.selectedTaskDate).format("YYYY-MM-DD");
+        handleDatePress(dateString); // Scroll to the selected date
+    }
+}, [route.params?.selectedTaskDate]);
+
+  const { selectedTaskDate } = route.params || {};
+const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || new Date());
+
 
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+
+
+  const selectedIndex = GenerateDates().findIndex(
+    (item) => item && item.dateString === moment(currentViewedDate).format("YYYY-MM-DD")
+);
+
+
+  useEffect(() => {
+    flatListRef.current.scrollToIndex({
+      index: selectedIndex,
+      animated: false,
+    });
+  }, [currentViewedDate]);
 
   const handleTaskPress = (task) => {
     setSelectedTask(task);
@@ -92,8 +128,8 @@ const SchedulePage = ({}) => {
 
       <TouchableOpacity onPress={() => handleDatePress(item.dateString)} activeOpacity={0.5}>
         <View style={styles.dateItem}>
-          <Text style={[styles.day, isSelected && styles.selectedText]}>{item.day}</Text>
-          <Text style={[styles.dateNumber, isSelected && styles.selectedText]}>{item.date}</Text>
+        <Text allowFontScaling={false} style={[styles.day, isSelected && styles.selectedText]}>{item.day}</Text>
+        <Text allowFontScaling={false} style={[styles.dateNumber, isSelected && styles.selectedText]}>{item.date}</Text>
           {isSelected && <View style={styles.selectedIndicator} />}
 
         </View>
@@ -101,11 +137,13 @@ const SchedulePage = ({}) => {
     );
   });
 
-
   const renderItem = ({ item }) => {
-    const isSelected = item.dateString === selectedDate;
-    return <DateItem item={item} isSelected={isSelected} handleDatePress={handleDatePress} />;
-  };
+    if (item && item.dateString) {
+        const isSelected = item.dateString === selectedDate;
+        return <DateItem item={item} isSelected={isSelected} handleDatePress={handleDatePress} />;
+    }
+    return null; // or some default component
+};
 
   useEffect(() => {
     flatListRef.current.scrollToIndex({
@@ -200,16 +238,16 @@ const SchedulePage = ({}) => {
           resizeMode="contain"
         />
         <View style = {styles.taskitemtext}>
-          <Text style={styles.taskSubject}>{item.subjectTitle}</Text>
-          <Text style={styles.taskCategory}>{item.category}</Text>
+        <Text allowFontScaling={false} style={styles.taskSubject}>{item.subjectTitle}</Text>
+        <Text allowFontScaling={false} style={styles.taskCategory}>{item.category}</Text>
           <View style={[styles.taskTopic, {flexShrink: 1}, {width : 210}]}>
           {item.topic && splitText(item.topic, 30).map((line, index) => (
-    <Text key={index} style={styles.taskTopicLine}>
+    <Text allowFontScaling={false} key={index} style={styles.taskTopicLine}>
         {line}
     </Text>
 ))}
           </View>
-          <Text
+          <Text allowFontScaling={false}
             style={[
               styles.taskTime,
               isLongSubjectTopic && styles.taskTimeMarginTop, // Apply the marginTop style conditionally
@@ -242,6 +280,14 @@ const SchedulePage = ({}) => {
     }
   };
 
+  useEffect(() => {
+    if (route.params?.selectedTaskDate) {
+        const dateString = moment(route.params.selectedTaskDate).format("YYYY-MM-DD");
+        handleDatePress(dateString); // Scroll to the selected date
+    }
+}, [route.params?.selectedTaskDate]);
+
+
   const MemoizedTaskItem = React.memo(TaskItem);
   const renderTaskItem = ({ item }) => <MemoizedTaskItem item={item} />;
 
@@ -266,7 +312,9 @@ const SchedulePage = ({}) => {
   const handleScrollEnd = (event) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
     const newDate = GenerateDates()[index];
-    setSelectedDate(newDate.dateString);
+    if (newDate && newDate.dateString) {
+      setSelectedDate(newDate.dateString); // Add this line to update the selectedDate
+    // Instead of setting the selected date here, simply update the current month and day title.
     setCurrentMonth(moment(newDate.dateString).format("MMMM YYYY"));
     const diff = moment(newDate.dateString).startOf('day').diff(moment().startOf('day'), "days");
     let title;
@@ -282,16 +330,17 @@ const SchedulePage = ({}) => {
       title = `In ${Math.abs(diff)} days`;
     }
     setDaysAgo(title);
+  }
   };
   return (
     <View style={styles.maincontainer}>
       <View style={styles.topbar}>
-        <Text style={styles.date}>
+      <Text allowFontScaling={false} style={styles.date}>
           <CurrentDate />
         </Text>
-        <Text style={styles.h1}>{daysAgo}</Text>
+        <Text allowFontScaling={false} style={styles.h1}>{daysAgo}</Text>
       </View>
-      <Text style={styles.monthText}>{currentMonth}</Text>
+      <Text allowFontScaling={false} style={styles.monthText}>{currentMonth}</Text>
       <FlatList
         style={styles.flatList}
         maxToRenderPerBatch={10} // Maximum number of items to render per batch
@@ -318,7 +367,7 @@ const SchedulePage = ({}) => {
         style={styles.task}
         onPress={() => navigation.navigate("Create Task")}
       >
-        <Text style={styles.addtask}>+ Add Task</Text>
+        <Text allowFontScaling={false} style={styles.addtask}>+ Add Task</Text>
 
 
       </TouchableOpacity>
@@ -329,7 +378,7 @@ const SchedulePage = ({}) => {
         renderItem={renderTaskItem}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={
-          <Text style={styles.noTasksText}>You have no tasks</Text>
+          <Text allowFontScaling={false} style={styles.noTasksText}>You have no tasks</Text>
         }
         snapToInterval={180 + 25} // height of taskItem + marginBottom
         snapToAlignment="start"
@@ -349,9 +398,9 @@ const SchedulePage = ({}) => {
     <View style={styles.modalContainer}>
       <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)} activeOpacity={0.9}>
       </TouchableOpacity>
-      <Text style={styles.modalTitle}>Mark task {"\n"} as complete</Text>
+      <Text allowFontScaling={false} style={styles.modalTitle}>Would you like to mark this{"\n"} task as complete?</Text>
       <TouchableOpacity style={styles.modalButton} onPress={markTaskAsComplete} activeOpacity={0.9}>
-        <Text style={styles.modalButtonText}>Complete Task</Text>
+      <Text allowFontScaling={false} style={styles.modalButtonText}>Complete Task</Text>
       </TouchableOpacity>
       <TouchableOpacity
       style={styles.closeButton}
@@ -381,8 +430,8 @@ const styles = StyleSheet.create({
   modalWrapper: {
     backgroundColor: 'white',
     borderRadius: 28,
-    width: 300,
-    height: 130,
+    width: 330,
+    height: 160,
     alignSelf: "center",
     borderColor: "#5AC0EB",
     borderWidth: 0.5,
@@ -400,23 +449,23 @@ const styles = StyleSheet.create({
   },
 
   modalTitle: {
-    fontSize: 24,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontSize: 20,
+    fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "#0089C2",
-    marginTop: 18,
+    marginTop: 35,
   },
   modalButton: {
     backgroundColor: "#5AC0EB",
-    borderRadius: 16,
   alignSelf: "center",
-    width: 168,
-    height: 40,
-    marginTop: 12
+  borderRadius: 16,
+  width: 200,
+  height: 40,
+    marginTop: 16
   },
   modalButtonText: {
     fontSize: 18,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     marginTop: 11,
     color: "white",
@@ -555,7 +604,7 @@ const styles = StyleSheet.create({
     height: 80,
     resizeMode: "contain",
     marginLeft: 220,
-    marginTop: 45,
+    marginTop: 52,
     position: "absolute",
   },
 
@@ -616,7 +665,7 @@ const styles = StyleSheet.create({
     fontFamily: "GalanoGrotesque-SemiBold",
     color: "#0089C2",
     textAlign: "center",
-    marginTop: 175,
+    marginTop: 200,
     alignSelf: "center",
   },
 

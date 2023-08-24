@@ -18,7 +18,8 @@ import TextGradient from "../Gradient/TextGradient";
 import { useState } from "react";
 import * as Font from "expo-font";
 import { useNavigation } from "@react-navigation/native";
-import { firebase } from "../config";
+import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { Alert } from 'react-native';
 import { Video } from "expo-av";
 import videoFile from '../assets/AnimatedGradient.mp4';
@@ -45,43 +46,52 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
 
   // forget password
   const forgetPassword = () => {
-    firebase.auth().sendPasswordResetEmail(email)
+    const auth = getAuth();
+  
+    sendPasswordResetEmail(auth, email)
       .then(() => {
         Alert.alert("Password Reset E-mail Sent!", "Please check your email inbox to reset your password.");
       })
       .catch((error) => {
         let errorMessage = "";
-        if (error.code === "auth/user-not-found") {
-          errorMessage = "E-mail address not found";
-        }
-        if (error.code === "auth/invalid-email") {
-          errorMessage = "Invalid e-mail address";
-        } if (!email) {
-          errorMessage = ("Enter your e-mail address to reset your password!");
-        } else {
-          errorMessage = error.message;
+        switch (error.code) {
+          case "auth/user-not-found":
+            errorMessage = "E-mail address not found";
+            break;
+          case "auth/invalid-email":
+            errorMessage = "Invalid e-mail address";
+            break;
+          default:
+            if (!email) {
+              errorMessage = "Enter your e-mail address to reset your password!";
+            } else {
+              errorMessage = error.message;
+            }
         }
         Alert.alert("Forgot Password?", errorMessage);
       });
   };
-
-
-    const loginUser = async (email, password) => {
-      try {
-        if (!email || !password) {
-          Alert.alert("Login", "Please enter an email or password");
-          return; // Don't proceed with login if email or password is missing
-        }      
-
-        const response = await firebase.auth().signInWithEmailAndPassword(email, password);
-    
-        const userId = response.user.uid;
-        const userDoc = await firebase.firestore().collection("users").doc(userId).get();
-    
-        if (!userDoc.exists) {
-          throw new Error("An account with this email was not found");
-        }
-      } catch (error) {
+  
+  const loginUser = async (email, password) => {
+    const auth = getAuth();
+    const firestore = getFirestore();
+  
+    try {
+      if (!email || !password) {
+        Alert.alert("Login", "Please enter an email or password");
+        return; // Don't proceed with login if email or password is missing
+      }      
+  
+      const response = await signInWithEmailAndPassword(auth, email, password);
+      
+      const userId = response.user.uid;
+      const userDocRef = doc(firestore, "users", userId);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (!userDocSnap.exists()) {
+        throw new Error("An account with this email was not found");
+      }
+    } catch (error) {
       let errorMessage = "";
       switch (error.code) {
         case "auth/invalid-email":

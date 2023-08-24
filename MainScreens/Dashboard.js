@@ -6,46 +6,48 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import React from "react";
-import { firebase } from "../config";
-import { useEffect } from "react";
-import { useState } from "react";
-import { Image } from "react-native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Timestamp } from 'firebase/firestore';
-import moment from "moment";
-import Greetings from "./MainAssetCode/Greetings";
-import Swiper from "react-native-swiper";
-import { useCallback } from "react";
-import { useFonts } from "expo-font";
+  import React from "react";
+  import { useEffect } from "react";
+  import { useState } from "react";
+  import { Image } from "react-native";
+  import { createNativeStackNavigator } from "@react-navigation/native-stack";
+  import moment from "moment";
+  import Greetings from "./MainAssetCode/Greetings";
+  import Swiper from "react-native-swiper";
+  import { useCallback } from "react";
+  import { useFonts } from "expo-font";
+  import { getAuth } from "firebase/auth";
+  import { getFirestore, doc, collection, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
+  import { getStorage, ref, getDownloadURL } from "firebase/storage";
 
-
-
-const fetchTasks = (date, setTasks) => {
+  const fetchTasks = (date, setTasks) => {
   
-  const currentUser = firebase.auth().currentUser;
-  if (!currentUser) {
-    console.log("No user is currently logged in.");
-    return;
-  }
-
-  const userId = currentUser.uid;
-  const selectedDate = moment(date).toDate();
-  const startOfDay = new Date(selectedDate);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(selectedDate);
-  endOfDay.setHours(23, 59, 59, 999);
-  const selectedDayOfWeek = moment(date).isoWeekday();
-  const now = new Date();
-
-  const unsubscribe = firebase
-    .firestore()
-    .collection("users")
-    .doc(userId)
-    .collection("tasks")
-    .orderBy("date")
-    .orderBy("time")
-    .onSnapshot((querySnapshot) => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+  
+    if (!currentUser) {
+      console.log("No user is currently logged in.");
+      return;
+    }
+  
+    const userId = currentUser.uid;
+    const selectedDate = moment(date).toDate();
+    const startOfDay = new Date(selectedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    const selectedDayOfWeek = moment(date).isoWeekday();
+    const now = new Date();
+  
+    const db = getFirestore();
+  
+    const userTasksQuery = query(
+      collection(doc(db, "users", userId), "tasks"),
+      orderBy("date"),
+      orderBy("time")
+    );
+  
+    const unsubscribe = onSnapshot(userTasksQuery, (querySnapshot) => {
       const fetchedTasks = querySnapshot.docs
         .map((doc) => ({
           id: doc.id,
@@ -55,24 +57,24 @@ const fetchTasks = (date, setTasks) => {
           (task) =>
             ((task.date.toDate() >= now && !task.repeat) ||
               (task.repeat &&
-                moment(task.date.toDate()).isoWeekday() ===
-                selectedDayOfWeek)) &&
+                moment(task.date.toDate()).isoWeekday() === selectedDayOfWeek)) &&
             task.date.toDate() >= now &&
             task.isCompleted === false
         );
-
+  
       setTasks(fetchedTasks);
     });
+  
+    // Return the unsubscribe function to clean up the listener when the component is unmounted
+    return unsubscribe;
+  };
 
-  // Return the unsubscribe function to clean up the listener when the component is unmounted
-  return unsubscribe;
-};
-
-
+const firestore = getFirestore();
+const docRef = doc(firestore, "users", auth.currentUser.uid);
 
 
 const Dashboard = ({ navigation}) => {
-  const currentUser = firebase.auth().currentUser;
+
 if (!currentUser) {
   // Redirect to login page
   navigation.navigate('LandingPage');
@@ -86,12 +88,14 @@ if (!currentUser) {
 
   useEffect(() => {
     const fetchProfileImage = async () => {
-      const currentUser = firebase.auth().currentUser;
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
       if (!currentUser) return; // If no user is signed in, just return
+      const storage = getStorage();
       const storagePath = `users/${currentUser.uid}/profileImage`;
-      const ref = firebase.storage().ref().child(storagePath);
+      const storageRef = ref(storage, storagePath);
       try {
-        const url = await ref.getDownloadURL();
+        const url = await getDownloadURL(storageRef);
         setProfileImage(url);
       } catch (error) {
         setProfileImage(defaultProfileImage);
@@ -99,7 +103,8 @@ if (!currentUser) {
     };
   
     // Create a Firestore reference
-    const docRef = firebase.firestore().collection("users").doc(firebase.auth().currentUser.uid);
+const firestore = getFirestore();
+const docRef = doc(firestore, "users", auth.currentUser.uid);
   
     // Listen to real-time changes
     const unsubscribe = docRef.onSnapshot((doc) => {
@@ -118,6 +123,27 @@ if (!currentUser) {
   const getTodayCompletedTasks = (tasks) => {
     const today = moment().startOf("day");
     return tasks.filter((task) => moment(task.completedAt).isSameOrAfter(today));
+  };
+
+  const markTaskAsComplete = async () => {
+    if (selectedTask) {
+      try {
+        const auth = getAuth();
+        const userId = auth.currentUser.uid;
+  
+        const db = getFirestore();
+        const taskRef = doc(db, "users", userId, "tasks", selectedTask.id);
+  
+        await updateDoc(taskRef, {
+          isCompleted: true,
+          completedAt: Timestamp.now()
+        });
+  
+        setModalVisible(false);
+      } catch (error) {
+        console.error(error);
+      }
+    }
   };
 
 
@@ -199,44 +225,57 @@ if (!currentUser) {
     };
   }, []);
 
+  
 
   const Stack = createNativeStackNavigator();
-  useEffect(() => {
-    firebase
-      .firestore()
-      .collection("users")
-      .doc(firebase.auth().currentUser.uid)
-      .onSnapshot((snapshot) => {
-        if (snapshot.exists) {
+ 
+useEffect(() => {
+  const auth = getAuth();
+  const userId = auth.currentUser.uid;
+
+  const db = getFirestore();
+  const userRef = doc(db, "users", userId);
+
+  const unsubscribe = onSnapshot(userRef, (snapshot) => {
+      if (snapshot.exists()) {
           setName(snapshot.data().firstName);
-        } else {
+      } else {
           console.log("User does not exist");
-        }
-      });
-  }, []);
+      }
+  });
+
+  // Clean up the listener on unmount
+  return () => unsubscribe();
+  
+}, []);
+
   const handleTabChange = (index) => {
     setActiveTab(index);
   };
   const [subjects, setSubjects] = useState([]);
-
   useEffect(() => {
-    const unsubscribe = firebase
-      .firestore()
-      .collection("users")
-      .doc(firebase.auth().currentUser.uid)
-      .collection("subjects")
-      .orderBy("createdAt", "desc")
-      .onSnapshot((querySnapshot) => {
-        const subjects = [];
-        querySnapshot.forEach((doc) => {
-          const subject = doc.data();
-          subject.id = doc.id; // Add this line to include the document id
-          subjects.push(subject);
+    const auth = getAuth();
+    const userId = auth.currentUser.uid;
+
+    const db = getFirestore();
+    const subjectsQuery = query(
+      collection(doc(db, "users", userId), "subjects"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(subjectsQuery, (querySnapshot) => {
+        const subjects = querySnapshot.docs.map(doc => {
+            const subject = doc.data();
+            subject.id = doc.id;
+            return subject;
         });
         setSubjects(subjects);
-      });
-    return unsubscribe;
-  }, []);
+    });
+
+    // Clean up the listener on unmount
+    return () => unsubscribe();
+    
+}, []);
 
 
   {
@@ -272,22 +311,22 @@ if (!currentUser) {
         activeOpacity={0.80}
         style={[styles.taskItem, { backgroundColor }]}
         onPress={() => {
-          // Handle task item press event
+          navigation.navigate("Schedule Page", { selectedTaskDate: task.date.toDate() });
         }}
       >
         {taskIcon && (
           <Image style={styles.subjectsicon2} source={taskIcon} />
         )}
-        <Text style={[styles.taskTitle, isLongTopic(task.topic) && styles.Long]}>
+        <Text allowFontScaling={false} style={[styles.taskTitle, isLongTopic(task.topic) && styles.Long]}>
           {task.subjectTitle}
         </Text>
-        <Text style={[styles.taskCategory, isLongTopic(task.topic) && styles.Long]}>
+        <Text allowFontScaling={false} style={[styles.taskCategory, isLongTopic(task.topic) && styles.Long]}>
           {task.category}
         </Text>
-        <Text style={[styles.taskTopic, isLongTopic(task.topic) && styles.Long , {width: 150}, {flexShrink: 1}]}>
+        <Text allowFontScaling={false} style={[styles.taskTopic, isLongTopic(task.topic) && styles.Long , {width: 150}, {flexShrink: 1}]}>
           {task.topic}
         </Text>
-        <Text style={[styles.taskDueDate, isLongTopic(task.topic) && styles.Long]}>
+        <Text allowFontScaling={false} style={[styles.taskDueDate, isLongTopic(task.topic) && styles.Long]}>
           {formattedDate}
           {"\n"}
           {formattedTime}
@@ -317,10 +356,10 @@ if (!currentUser) {
     <SafeAreaView style={styles.container}>
       <View>
         <View style={styles.greetingsContainer}>
-          <Text style={styles.greetingsText}>
+        <Text allowFontScaling={false} style={styles.greetingsText}>
             <Greetings />
           </Text>
-          <Text style={styles.greetingsTextName}>{name}</Text>
+          <Text allowFontScaling={false} style={styles.greetingsTextName}>{name}</Text>
         </View>
 
         <View style={styles.headerIconContainer}>
@@ -347,8 +386,8 @@ if (!currentUser) {
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.header, styles.spacing [{}]]}>Subjects</Text>
-        <Text style={styles.header1}>Your current subjects</Text>
+        <Text allowFontScaling={false} style={[styles.header, styles.spacing [{}]]}>Subjects</Text>
+        <Text allowFontScaling={false} style={styles.header1}>Your current subjects</Text>
 
         <View style={styles.subjectContainer}>
           <ScrollView
@@ -381,7 +420,7 @@ if (!currentUser) {
                   style={styles.subjectsicon}
                   source={{ uri: subject.icon }}
                 />
-                <Text style={styles.subjectstext}>{subject.title}</Text>
+                <Text allowFontScaling={false} style={styles.subjectstext}>{subject.title}</Text>
               </TouchableOpacity>
             ))}
             <TouchableOpacity
@@ -403,8 +442,8 @@ if (!currentUser) {
         </View>
 
         <View style={styles.scheduleContainer}>
-          <Text style={styles.header}>Schedule</Text>
-          <Text style={styles.header1}>Upcoming assignments and tasks</Text>
+        <Text allowFontScaling={false} style={styles.header}>Schedule</Text>
+        <Text allowFontScaling={false} style={styles.header1}>Upcoming tasks and study goals</Text>
           <View style={styles.schedule}>
             {tasks.length > 0 ? (
               <Swiper
@@ -449,6 +488,7 @@ export default Dashboard;
 
 
 const styles = StyleSheet.create({
+  
   headerIconContainer: {
     flexDirection: "row",
   },
@@ -459,7 +499,7 @@ const styles = StyleSheet.create({
   completedTask:{
     width: 50,
     height: 50,
-    marginLeft: 245
+    marginLeft: 290
   },
   container: {
     backgroundColor: "white",
@@ -476,7 +516,7 @@ const styles = StyleSheet.create({
   profileIcon: {
     width: 50,
     height: 50,
-    marginLeft: 250,
+    marginLeft: 290,
     marginTop: 13,
     shadowColor: "black",
     shadowOffset: { width: 0, height: 3 },
@@ -496,7 +536,7 @@ const styles = StyleSheet.create({
   profileIcon: {
     width: 50,
     height: 50,
-    marginLeft: 240,
+    marginLeft: 290,
     marginTop: 13,
     borderRadius: 100,
   },
@@ -635,8 +675,9 @@ const styles = StyleSheet.create({
     borderRadius: 40,
   },
   taskItem: {
-    height: 180,
+    height: 190,
     borderRadius: 40,
+    width: 412,
   },
   taskTitle: {
     fontSize: 26,
@@ -648,25 +689,25 @@ const styles = StyleSheet.create({
   },
   taskCategory: {
     fontSize: 25,
-    marginLeft: 20,
+    marginLeft: 19,
     fontFamily: "GalanoGrotesque-Medium",
     color: "white",
     marginBottom: 2,
   },
 
   taskTopic: {
-    fontSize: 18,
+    fontSize: 20,
     marginLeft: 20,
     fontFamily: "GalanoGrotesque-Light",
     color: "white",
-    width: 180,
+    width: 300,
     marginBottom: 5,
   },
   subjectsicon2: {
-    height: 90,
-    width: 90,
-    marginLeft: 220,
-    marginTop: 50,
+    height: 110,
+    width: 110,
+    marginLeft: 230,
+    marginTop: 40,
     position: "absolute"
   },
 
@@ -679,14 +720,14 @@ const styles = StyleSheet.create({
   },
 
   Long: {
-    top:  -8,
+    top:  -4,
   },
   schedule: {
     marginTop: 10,
     backgroundColor: "#5AC0EB",
     marginLeft: 10,
-    height: 180,
-    width: 352,
+    height: 190,
+    width: 412,
     borderRadius: 40,
     marginBottom: 200,
   },

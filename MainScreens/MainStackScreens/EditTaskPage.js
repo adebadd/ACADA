@@ -12,7 +12,9 @@ import {
 } from "react-native";
 import React from "react";
 import { useState } from "react";
-import { firebase } from "../../config";
+import { getAuth } from 'firebase/auth';
+import { getFirestore, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import {  collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { useEffect } from "react";
 import { TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -158,7 +160,8 @@ const EditTaskPage = ({ navigation, route }) => {
     setDeleteAction(() => async () => {
       try {
         console.log("Deleting task...");
-        const userId = firebase.auth().currentUser.uid;
+        const auth = getAuth();
+        const userId = auth.currentUser.uid;
         await firebase.firestore()
           .collection('users')
           .doc(userId)
@@ -178,14 +181,17 @@ const EditTaskPage = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    const userId = firebase.auth().currentUser.uid;
-    const unsubscribe = firebase
-      .firestore()
-      .collection("users")
-      .doc(userId)
-      .collection("subjects")
-      .orderBy("createdAt", "desc")
-      .onSnapshot((querySnapshot) => {
+    const auth = getAuth();
+    const userId = auth.currentUser.uid;
+
+    const firestore = getFirestore();
+
+    const q = query(
+      collection(firestore, "users", userId, "subjects"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const subjects = [];
         querySnapshot.docChanges().forEach((change) => {
           if (change.type === "modified") {
@@ -209,7 +215,7 @@ const EditTaskPage = ({ navigation, route }) => {
         setSelectedDate(task.date.toDate()); // Set the selected date
       });
     return unsubscribe;
-  }, []);
+}, []);
   
   const updateTask = async (
     taskId,
@@ -220,63 +226,65 @@ const EditTaskPage = ({ navigation, route }) => {
     selectedTime
   ) => {
     // Add your new check here
+    if (!selectedCategory) {
+      setModalTitleSmall('Select a task category');
+      setModalButtonTextSmall('OK');
+      setModalVisibleSmall(true);
+      return;
+    }
     if (Topic && Topic.length > 30) {
-      setModalTitle('Please enter a task topic with no more than 30 characters.');
+      setModalTitle('Please enter a task topic with \nno more than 30 characters.');
       setModalButtonText('OK');
+      setModalWidth(320);  // reset to default
+      setModalHeight(150); // reset to default
       setModalVisible(true);
       return;
-      
-  }
+    }
+    if (!selectedCategory) {
+      setModalTitleSmall('Please select a category');
+      setModalButtonTextSmall('OK');
+      setModalVisibleSmall(true);
+      return;
+    }
+    if (!selectedSubject) {
+      setModalTitleSmall('Please select a subject');
+      setModalButtonTextSmall('OK');
+      setModalVisibleSmall(true);
+      return;
+    }
 
-   
+
+  
     const selectedSubjectData = subjects.find(
       (item) => item.title === selectedSubject
     );
-
+  
     const selectedSubjectIcon = selectedSubjectData.icon;
     const selectedSubjectColor = selectedSubjectData.subjectcolor;
-    const userId = firebase.auth().currentUser.uid;
-
-    Alert.alert(
-      "Update task",
-      "Are you sure you want to update this task?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Update",
-          onPress: async () => {
-            await firebase
-              .firestore()
-              .collection("users")
-              .doc(userId)
-              .collection("tasks")
-              .doc(taskId)
-              .update({
-                subjectId: selectedSubjectData.id,
-                subjectTitle: selectedSubject,
-                category: selectedCategory,
-                topic: Topic,
-                date: selectedDate,
-                time: selectedTime,
-                icon: selectedSubjectIcon,
-                color: selectedSubjectColor,
-                repeat: selectedCategory === "Lab" || selectedCategory === "Class",
-              })
-              .then(() => {
-                console.log("Task updated successfully!");
-              })
-              .catch((error) => {
-                console.error("Error updating task: ", error);
-              });
-            navigation.goBack();
-          },
-        },
-      ]
-    );
+    const auth = getAuth();
+    const userId = auth.currentUser.uid;
+  
+    // Update the task in Firebase
+    try {
+      const firestore = getFirestore();
+      await updateDoc(doc(firestore, 'users', userId, 'tasks', taskId), {
+        subjectId: selectedSubjectData.id,
+        subjectTitle: selectedSubject,
+        category: selectedCategory,
+        topic: Topic,
+        date: selectedDate,
+        time: selectedTime,
+        icon: selectedSubjectIcon,
+        color: selectedSubjectColor,
+        repeat: selectedCategory === "Lab" || selectedCategory === "Class",
+      });
+      console.log("Task updated successfully!");
+      navigation.goBack(); // Navigate back after successful update
+    } catch (error) {
+      console.error("Error updating task: ", error);
+    }
   };
+  
 
   return (
     <View style={styles.container}>
@@ -534,21 +542,12 @@ const EditTaskPage = ({ navigation, route }) => {
           />
 
           <View style={styles.adddelview}>
-            <TouchableOpacity
-              activeOpacity={0.76}
-              onPress={() => {
-                updateTask(
-                  task.id,
-                  selectedSubject,
-                  selectedCategory,
-                  Topic,
-                  selectedDate,
-                  formatTime(selectedDate),
-                  selectedSubjectIcon,
-                  selectedSubjectColor
-                );
-              }}
-            >
+          <TouchableOpacity
+  activeOpacity={0.76}
+  onPress={() => {
+    setUpdateModalVisible(true);
+  }}
+>
               <Image
                 style={styles.createIcon}
                 source={require("../../assets/AppIcons/checkicon.png")}
@@ -676,15 +675,26 @@ const EditTaskPage = ({ navigation, route }) => {
         hasCloseButtonSmall={true}
       />
       
+   
       <CustomModalUpdate
-                  isVisible={isUpdateModalVisible}
-                  closeModal={closeModal}
-                  title={`Are you sure you want to\n update this task?`}
-                  buttonText={'Update'}
-                  buttonText2={'Cancel'}
-                  buttonAction={() => setUpdateModalVisible(false)} // closeModal action is assigned here
-                  buttonAction2={updateTask} // delete action is assigned here
-              />
+  isVisible={isUpdateModalVisible}
+  closeModal={() => setUpdateModalVisible(false)}
+  title={`Are you sure you want to\n update this task?`}
+  buttonText={'Update'}
+  buttonText2={'Cancel'}
+  buttonAction2={async () => {
+    await updateTask(
+      task.id,
+      selectedSubject,
+      selectedCategory,
+      Topic,
+      selectedDate,
+      formatTime(selectedDate)
+    );
+    setUpdateModalVisible(false); // Close the modal after updating
+  }}
+  buttonAction={() => setUpdateModalVisible(false)} // Close the modal
+/>
 
 
       </View>
