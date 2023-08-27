@@ -22,9 +22,16 @@ import StudyTimerPage from './MainScreens/StudyTimerPage';
 import SchedulePage from './MainScreens/SchedulePage';
 import PushNotifications from './MainScreens/MainAssetCode/PushNotifications';
 import SocialPage from './MainScreens/SocialPage';
+import StudyStatsPage from './MainScreens/MainStackScreens/StudyStatsPage';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Firebase new modular imports
+import { getFirestore } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import app from './config';  // Assuming this is where you initialized your Firebase app
+import StudyTabs from './TabbarNavigation/StudyTabs';
+
+
 import { useCallback } from 'react';
 
 const Stack = createNativeStackNavigator();
@@ -101,9 +108,6 @@ function MainStack() {
        <Stack.Screen name="Edit Task Page" component={EditTaskPage}
         options={({ }) => ({ animationEnabled: false, headerShown: false })}
       />
-      <Stack.Screen name="Study Timer" component={StudyTimerPage} options={{
-        animationEnabled: false, headerShown: false
-      }} />
 
       <Stack.Screen name="Social Page" component={SocialPage} options={{
         animationEnabled: false, headerShown: false
@@ -120,14 +124,9 @@ function AppContent() {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState(null);
 
-  // Handle user state changes
-  function onAuthStateChanged(user) {
-    setUser(user);
-    if (initializing) setInitializing(false);
-  }
-
   useEffect(() => {
-    const subscriber = firebase.auth().onAuthStateChanged((user) => {
+    const auth = getAuth(app);
+    const subscriber = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUser(user);
       } else {
@@ -136,7 +135,7 @@ function AppContent() {
       if (initializing) setInitializing(false);
     });
     return subscriber; // unsubscribe on unmount
-  }, []);
+  }, [initializing]);
 
   if (initializing) return null;
 
@@ -150,6 +149,7 @@ export default function App() {
     </NavigationContainer>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

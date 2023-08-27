@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import React from "react";
 import { useState } from "react";
-import { firebase } from "../../config";
 import { useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -24,14 +23,22 @@ import CustomModal from "../Alerts/CustomAlert";
 import CustomModalSmall from "../Alerts/CustomAlertSmall";
 import CustomModalUpdate from "../Alerts/CustomAlertUpdate";
 import CustomModalDelete from "../Alerts/CustomAlertDelete";
-
+import { getAuth } from "firebase/auth";
+import { getFirestore, doc, collection, getDocs, query, where, writeBatch } from "firebase/firestore";
 
 const EditSubjectPage = ({ route }) => {
   const { subject } = route.params;
 
 
   const [name, setName] = useState([]);
-
+  const auth = getAuth();
+  if (!auth.currentUser) {
+      console.error("No user is authenticated");
+      return;
+  }
+  const userId = auth.currentUser.uid;
+  const firestore = getFirestore();
+  const db = getFirestore();
 
   const [modalVisibleSmall, setModalVisibleSmall] = useState(false);
   const [modalTitleSmall, setModalTitleSmall] = useState('');
@@ -85,6 +92,7 @@ const EditSubjectPage = ({ route }) => {
 
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteAction, setDeleteAction] = useState(null);
+
   const updateSubject = async () => {
       if (subjectTitle.length > 13) {
           setModalTitle('Title should not be\n more than 13 characters.');
@@ -113,54 +121,33 @@ const EditSubjectPage = ({ route }) => {
 
   const handleUpdate = async () => {
       // Check if the subject title already exists in the Firebase collection
-      const subjectRef = firebase
-          .firestore()
-          .collection("users")
-          .doc(firebase.auth().currentUser.uid)
-          .collection("subjects");
-
-      const querySnapshot = await subjectRef
-          .where("title", "==", subjectTitle)
-          .get();
-
-      if (!querySnapshot.empty) {
-          const existingSubject = querySnapshot.docs[0];
-          if (existingSubject.id !== subject.id) {
-              setUpdateModalVisible(false); // Hide the update modal
-              setModalTitle('This subject title is already \nin use. Choose a different title.');
-              setModalButtonText('OK');
-              setModalVisible(true);
-              return;
-          }
+     const userDocRef = doc(firestore, "users", currentUser.uid, "subjects", subject.id);
+  const querySnapshot = await getDocs(query(collection(firestore, "users", currentUser.uid, "subjects"), where("title", "==", subjectTitle)));
+  
+  if (!querySnapshot.empty) {
+      const existingSubject = querySnapshot.docs[0];
+      if (existingSubject.id !== subject.id) {
+          setUpdateModalVisible(false); // Hide the update modal
+          setModalTitle('This subject title is already \nin use. Choose a different title.');
+          setModalButtonText('OK');
+          setModalVisible(true);
+          return;
       }
+  }
 
-      // Update the subject details
-      const subjectDocRef = firebase
-          .firestore()
-          .collection("users")
-          .doc(firebase.auth().currentUser.uid)
-          .collection("subjects")
-          .doc(subject.id);
-
-      const updatedData = {
-          title: subjectTitle.trim() === "" ? subject?.title ?? "" : subjectTitle,
-          teacher: subjectTeacher.trim() === "" ? subject?.teacher ?? "" : subjectTeacher,
-          code: subjectCode.trim() === "" ? subject?.code ?? "" : subjectCode,
-          icon: selectedSubjectIcon ?? subject?.icon,
-          subjectcolor: selectedColor ?? subject?.subjectcolor,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      };
-
-      subjectDocRef
-          .update(updatedData)
-          .then(() => {
-              setUpdateModalVisible(false); // Hide the update modal
-              navigation.goBack(); // Navigate back to the dashboard
-          })
-          .catch((error) => {
-              console.log("Update Error: ", error);
-          });
+  const updatedData = {
+      title: subjectTitle.trim() === "" ? subject?.title ?? "" : subjectTitle,
+      teacher: subjectTeacher.trim() === "" ? subject?.teacher ?? "" : subjectTeacher,
+      code: subjectCode.trim() === "" ? subject?.code ?? "" : subjectCode,
+      icon: selectedSubjectIcon ?? subject?.icon,
+      subjectcolor: selectedColor ?? subject?.subjectcolor,
+      createdAt: serverTimestamp(),
   };
+
+  await updateDoc(userDocRef, updatedData);
+  setUpdateModalVisible(false); // Hide the update modal
+  navigation.goBack(); // Navigate back to the dashboard
+};
 
   const deleteSubject = () => {
       setDeleteAction(() => () => handleDeleteSubject());  // Store a function that calls handleDeleteSubject
@@ -168,35 +155,28 @@ const EditSubjectPage = ({ route }) => {
   };
 
   const handleDeleteSubject = async () => {
-      const userId = firebase.auth().currentUser.uid;
-      const tasksRef = firebase.firestore().collection("users").doc(userId).collection("tasks");
-      const tasksSnapshot = await tasksRef.where("subjectTitle", "==", subject.title).get();
+    try {
+        const userId = getAuth().currentUser.uid;// Ensure you've imported and initialized `getAuth`
 
-      const batch = firebase.firestore().batch();
-      tasksSnapshot.forEach((doc) => {
-          batch.delete(doc.ref);
-      });
+        const userDocRef = doc(db, "users", userId);
+        const tasksRef = collection(userDocRef, "tasks");
+        const tasksSnapshot = await getDocs(query(tasksRef, where("subjectTitle", "==", subject.title)));
 
-      firebase
-          .firestore()
-          .collection("users")
-          .doc(userId)
-          .collection("subjects")
-          .doc(subject.id)
-          .delete()
-          .then(() => {
-              batch.commit()
-                  .then(() => {
-                      navigation.goBack();
-                  })
-                  .catch((error) => {
-                      console.error(error);
-                  });
-          })
-          .catch((error) => {
-              console.error(error);
-          });
-  }
+        const batch = writeBatch(db);
+
+        tasksSnapshot.forEach((docSnapshot) => {
+            batch.delete(docSnapshot.ref);
+        });
+
+        const subjectDocRef = doc(userDocRef, "subjects", subject.id);
+        batch.delete(subjectDocRef);
+
+        await batch.commit();
+        navigation.goBack();
+    } catch (error) {
+        console.error("Error deleting subject:", error);
+    }
+};
 
   const Stack = createNativeStackNavigator();
   const navigation = useNavigation();
@@ -212,10 +192,10 @@ const EditSubjectPage = ({ route }) => {
               </TouchableOpacity>
           </View>
 
-          <Text style={styles.header}>Edit {"\n"}{subject.title} Details</Text>
+          <Text allowFontScaling={false} style={styles.header}>Edit {"\n"}{subject.title} Details</Text>
 
           <View style={[styles.textInputView]}>
-              <TextInput
+          <TextInput
                   style={[styles.subjectinput, { marginTop: 8 }]}
                   placeholder={subject.title}
                   placeholderTextColor="#0089C2"
@@ -229,7 +209,7 @@ const EditSubjectPage = ({ route }) => {
                   blurOnSubmit={false}
               />
 
-              <TextInput
+<TextInput
                   style={[styles.subjectinput, {}]}
                   placeholder={subject.teacher === "" ? "Subject Teacher" : subject.teacher}
                   placeholderTextColor="#0089C2"
@@ -246,7 +226,7 @@ const EditSubjectPage = ({ route }) => {
                   blurOnSubmit={false}
               />
 
-              <TextInput
+<TextInput
                   style={[styles.subjectinput, { marginBottom: 100 }]}
                   placeholder={subject.code === "" ? "Course Code" : subject.code}
                   placeholderTextColor="#0089C2"
@@ -273,7 +253,7 @@ const EditSubjectPage = ({ route }) => {
               />
           </View>
 
-          <Text style={styles.header2}>Select subject icon:</Text>
+          <Text allowFontScaling={false} style={styles.header2}>Select subject icon:</Text>
 
           <ScrollView
               horizontal={true}
@@ -723,7 +703,7 @@ const EditSubjectPage = ({ route }) => {
 
           <View style={styles.colorPalette}></View>
 
-          <Text style={[styles.header3]}>Select subject color:</Text>
+          <Text allowFontScaling={false} style={[styles.header3]}>Select subject color:</Text>
 
           <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
 
@@ -1012,7 +992,7 @@ const styles = StyleSheet.create({
   buttonView: {
       flexDirection: "row",
       alignSelf: "center",
-      marginBottom: 20,
+      marginBottom: 30,
   },
 
   subjectsContainer: {
@@ -1183,6 +1163,10 @@ const styles = StyleSheet.create({
       marginBottom: 10,
   },
 
+  colorPalette: {
+    marginTop: "-10%",
+  },
+
   header2: {
       fontSize: 19,
       fontFamily: "GalanoGrotesque-Medium",
@@ -1211,7 +1195,7 @@ const styles = StyleSheet.create({
       borderBottomColor: "#5AC0EB",
       borderColor: "#0089C2",
       borderWidth: 1.8,
-      width: 340,
+      width:"91%",
       padding: 10,
       height: 62,
       marginLeft: 18,
@@ -1267,8 +1251,8 @@ const styles = StyleSheet.create({
   },
 
   createIcon: {
-      width: 80,
-      height: 80,
+      width: 85,
+      height: 85,
       alignSelf: "center",
       marginBottom: 35,
       marginHorizontal: 15,

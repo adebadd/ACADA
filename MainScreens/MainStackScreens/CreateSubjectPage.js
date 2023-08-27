@@ -8,7 +8,6 @@ import {
 } from "react-native";
 import React from "react";
 import { useState } from "react";
-import { firebase } from "../../config";
 import { useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -21,22 +20,37 @@ import { Alert } from "react-native";
 import CustomModal from "../Alerts/CustomAlert";
 import CustomModalSmall from "../Alerts/CustomAlertSmall";
 import CustomModalUpdate from "../Alerts/CustomAlertUpdate";
-
+import { getAuth } from 'firebase/auth';
+import { 
+  getFirestore, 
+  doc, 
+  onSnapshot, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  addDoc, 
+  serverTimestamp 
+} from 'firebase/firestore';
 
 const CreateSubjectPage = () => {
+  const auth = getAuth();
+const firestore = getFirestore();
   const [name, setName] = useState([]);
   useEffect(() => {
-    firebase
-      .firestore()
-      .collection("users")
-      .doc(firebase.auth().currentUser.uid)
-      .onSnapshot((snapshot) => {
-        if (snapshot.exists) {
-          setName(snapshot.data());
-        } else {
-          console.log("User does not exist");
-        }
-      });
+    const currentUser = auth.currentUser;
+    if (!currentUser) return; // If no user is signed in, just return
+    
+    const userDocRef = doc(firestore, "users", currentUser.uid);
+    const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setName(snapshot.data());
+      } else {
+        console.log("User does not exist");
+      }
+    });
+  
+    return () => unsubscribe(); // Unsubscribe on cleanup
   }, []);
 
   const [selectedColor, setSelectedColor] = useState(null);
@@ -120,16 +134,11 @@ if (!subjectTitle || !selectedSubjectIcon || !selectedColor) {
 }
   
     // Check if the subject title already exists in the Firebase collection
-    const subjectRef = firebase
-      .firestore()
-      .collection("users")
-      .doc(firebase.auth().currentUser.uid)
-      .collection("subjects");
+    const subjectRef = collection(firestore, "users", auth.currentUser.uid, "subjects");
   
-    const querySnapshot = await subjectRef.where("title", "==", subjectTitle).get();
-  
-  
-    if (!querySnapshot.empty) {
+    const querySnapshot = await getDocs(query(subjectRef, where("title", "==", subjectTitle)));
+    
+    if (querySnapshot.size > 0) {
       setModalTitle('This subject title is\n already in use.');
       setModalButtonText('OK');
       setModalWidth(320);  // reset to default
@@ -138,25 +147,20 @@ if (!subjectTitle || !selectedSubjectIcon || !selectedColor) {
       return;
     }
   
-    firebase
-      .firestore()
-      .collection("users")
-      .doc(firebase.auth().currentUser.uid)
-      .collection("subjects")
-      .add({
-        title: subjectTitle,
-        teacher: subjectTeacher,
-        code: subjectCode,
-        icon: selectedSubjectIcon,
-        subjectcolor: selectedColor,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      })
-      .then(() => {
-        console.log("Subject added successfully!");
-      })
-      .catch((error) => {
-        console.error("Error adding subject: ", error);
-      });
+    addDoc(subjectRef, {
+      title: subjectTitle,
+      teacher: subjectTeacher,
+      code: subjectCode,
+      icon: selectedSubjectIcon,
+      subjectcolor: selectedColor,
+      createdAt: serverTimestamp(),
+    })
+    .then(() => {
+      console.log("Subject added successfully!");
+    })
+    .catch((error) => {
+      console.error("Error adding subject: ", error);
+    });
   
     navigation.goBack();
   };
@@ -176,7 +180,7 @@ if (!subjectTitle || !selectedSubjectIcon || !selectedColor) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.header}>Create {"\n"}New subject</Text>
+      <Text allowFontScaling={false} style={styles.header}>Create {"\n"}New subject</Text>
 
       <View style={[styles.textInputView]}>
         <TextInput
@@ -234,7 +238,7 @@ if (!subjectTitle || !selectedSubjectIcon || !selectedColor) {
         />
       </View>
 
-      <Text style={styles.header2}>Select subject icon:</Text>
+      <Text allowFontScaling={false} style={styles.header2}>Select subject icon:</Text>
 
       <ScrollView
         horizontal={true}
@@ -685,7 +689,7 @@ if (!subjectTitle || !selectedSubjectIcon || !selectedColor) {
 
       <View style={styles.colorPalette}></View>
 
-      <Text style={[styles.header3]}>Select subject color:</Text>
+      <Text allowFontScaling={false} style={[styles.header3]}>Select subject color:</Text>
       <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
   
   <TouchableOpacity
@@ -1056,6 +1060,9 @@ const styles = StyleSheet.create({
   subjecttext2: {
     marginLeft: 11,
   },
+  colorPalette:{
+    marginTop: "-6%"
+  },
 
   subjecttext3: {
     marginLeft: 20,
@@ -1136,7 +1143,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#5AC0EB",
     borderColor: "#0089C2",
     borderWidth: 1.8,
-    width: 340,
+    width: "91%",
     padding: 10,
     height: 62,
     marginLeft: 18,
@@ -1192,10 +1199,10 @@ const styles = StyleSheet.create({
   },
 
   createIcon: {
-    width: 80,
-    height: 80,
+    width: 90,
+    height: 90,
     alignSelf: "center",
-    marginBottom: 55,
+    marginBottom: "20%",
   },
 
   subjectIcon: {

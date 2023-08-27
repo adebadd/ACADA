@@ -7,30 +7,41 @@ import {
   Image,
 } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
-import { firebase } from "../../config";
 import moment from "moment";
 import { useNavigation } from "@react-navigation/native";
 import { SectionList } from "react-native";
 import { ScrollView } from "react-native";
+import { getFirestore, doc, getDocs, collection, query, where, orderBy, deleteDoc, writeBatch } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const CompletedTask = ({ navigation }) => {
   const [completedTasks, setCompletedTasks] = useState([]);
   const [currentDate, setCurrentDate] = useState("");
   const scrollViewRef = useRef(null);
+  const db = getFirestore();
+  const auth = getAuth();
+ 
 
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50
+  };
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems && viewableItems[0]) {
+      setCurrentDate(viewableItems[0].item.date);
+    }
+  }).current;
+
+
+  
   const clearAllTasks = async () => {
     try {
-      const userId = firebase.auth().currentUser.uid;
-      const batch = firebase.firestore().batch();
+      const userId = auth.currentUser.uid;
+      const batch = writeBatch(db);
     
       // Loop through completed tasks and create delete operations for the batch
       completedTasks.forEach((task) => {
-        const taskRef = firebase
-          .firestore()
-          .collection("users")
-          .doc(userId)
-          .collection("tasks")
-          .doc(task.id);
+        const taskRef = doc(db, "users", userId, "tasks", task.id);
         batch.delete(taskRef);
       });
 
@@ -49,25 +60,24 @@ const CompletedTask = ({ navigation }) => {
     return tasks.filter((task) => moment(task.completedAt).isSameOrAfter(today));
   };
 
-  useEffect(() => {
+   useEffect(() => {
     const fetchCompletedTasks = async () => {
       try {
-        const userId = firebase.auth().currentUser.uid;
-        const tasksSnapshot = await firebase
-          .firestore()
-          .collection("users")
-          .doc(userId)
-          .collection("tasks")
-          .where("isCompleted", "==", true)
-          .orderBy("completedAt", "desc")
-          .get();
-    
-          const fetchedTasks = tasksSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            completedAt: moment(doc.data().completedAt.toDate()).startOf("day").toDate(),
-          }));
-    
+        const userId = auth.currentUser.uid;
+        const q = query(
+          collection(db, "users", userId, "tasks"),
+          where("isCompleted", "==", true),
+          orderBy("completedAt", "desc")
+        );
+
+        const tasksSnapshot = await getDocs(q);
+
+        const fetchedTasks = tasksSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          completedAt: moment(doc.data().completedAt.toDate()).startOf("day").toDate(),
+        }));
+
         setCompletedTasks(fetchedTasks);
     
         if (fetchedTasks.length > 0) {
@@ -99,6 +109,7 @@ const CompletedTask = ({ navigation }) => {
 
   const groupedCompletedTasks = groupTasksByDate(completedTasks);
 
+  
   const getCustomMessage = (task) => {
     const date = moment(task.completedAt).format("MMMM Do, YYYY");
     const time = moment(task.completedAt).format("h:mm a"); // Use the full date and time information
@@ -108,9 +119,9 @@ const CompletedTask = ({ navigation }) => {
       case "Class":
         return `You attended class on ${"\n"}${date} at ${time}`;
       case "Exam":
-        return `You sat exam on ${"\n"}${date} at ${time}`;
+        return `You sat an exam on ${"\n"}${date} at ${time}`;
       case "Presentation":
-        return `You presented presentation on ${"\n"}${date} at ${time}`;
+        return `You presented on ${"\n"}${date} at ${time}`;
       case "Assignment":
         return `You submitted assignment on ${"\n"}${date} at ${time}`;
       case "Lab":
@@ -132,7 +143,7 @@ const CompletedTask = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-
+  
       <View styles={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Image
@@ -142,48 +153,65 @@ const CompletedTask = ({ navigation }) => {
         </TouchableOpacity>
         {completedTasks.length > 0 && (
           <TouchableOpacity onPress={clearAllTasks} style={styles.clearAllButton}>
-            <Text style={styles.clearAllButtonText}>Clear All</Text>
+            <Text allowFontScaling={false} style={styles.clearAllButtonText}>Clear All</Text>
           </TouchableOpacity>
         )}
       </View>
-
-      <Text style={styles.header}>Completed {"\n"}Tasks</Text>
-      <Text style={styles.header1}>
+  
+      <Text allowFontScaling={false} style={styles.header}>Completed {"\n"}Tasks</Text>
+      <Text allowFontScaling={false} style={styles.header1}>
         {getTodayCompletedTasks(completedTasks).length}{" "}
         {getTodayCompletedTasks(completedTasks).length === 1 ? "task" : "tasks"} completed today
       </Text>
   
+      <Text allowFontScaling={false} style={styles.header2}>
+        {currentDate}
+      </Text>
+  
       {completedTasks.length === 0 ? (
-        <Text style={styles.noCompletedTasksText}>No completed tasks</Text>
+        <Text allowFontScaling={false} style={styles.noCompletedTasksText}>No completed tasks</Text>
       ) : (
         <ScrollView
-          ref={scrollViewRef}
-          style = {styles.scrollViewHeight}
-          onScroll={(event) => {
-            const scrollPosition = event.nativeEvent.contentOffset.y;
-            const scrollViewHeight = event.nativeEvent.layoutMeasurement.height;
-            const dateTextHeight = 40;
-
-            const currentIndex = Math.floor(scrollPosition / scrollViewHeight);
-            const currentTask = formattedTasks[currentIndex];
-            const nextTask = formattedTasks[currentIndex + 1];
-
-            if (
-              currentTask &&
-              nextTask &&
-              scrollPosition % scrollViewHeight > scrollViewHeight - dateTextHeight
-            ) {
-              setCurrentDate(nextTask.date);
-            } else if (currentTask) {
-              setCurrentDate(currentTask.date);
+        ref={scrollViewRef}
+        style={styles.scrollViewHeight}
+        onScroll={(event) => {
+          const scrollPosition = event.nativeEvent.contentOffset.y;
+          for (let i = 0; i < formattedTasks.length; i++) {
+            const taskGroupHeight = (formattedTasks[i].tasks.length * 130) + 40; // estimated height for each task group (130px per task + 40px for date header)
+            if (scrollPosition <= taskGroupHeight * (i + 1)) {
+              setCurrentDate(formattedTasks[i].date);
+              break;
             }
-          }}
-          scrollEventThrottle={200}
-        >
-          {formattedTasks.map((item) => (
+          }
+        }}
+        scrollEventThrottle={16}
+      >
+        {formattedTasks.map((item, index) => {
+          if (index === 0) { // Skip rendering the most recent completed task's date
+            return item.tasks.map((task) => (
+              <View
+                style={[
+                  styles.taskItem,
+                  { backgroundColor: task.color, height: task.category === 'Reminder' && task.topic ? 140 : 130 }
+                ]}
+                key={task.id}
+              >
+                <Image
+                  source={{ uri: task.icon }}
+                  style={styles.subjectIcon}
+                  resizeMode="contain"
+                />
+                <Text allowFontScaling={false} style={styles.taskTitle}>{task.subjectTitle}</Text>
+                <Text allowFontScaling={false} style={styles.taskCategory}>{task.category}</Text>
+                <Text allowFontScaling={false} style={styles.taskTopic}>{getCustomMessage(task)}</Text>
+              </View>
+            ));
+          }
+      
+          return (
             <React.Fragment key={item.date}>
               <View style={styles.dateGroup}>
-                <Text style={styles.dateText}>{item.date}</Text>
+                <Text allowFontScaling={false} style={styles.dateText}>{item.date}</Text>
               </View>
               {item.tasks.map((task) => (
                 <View
@@ -195,17 +223,18 @@ const CompletedTask = ({ navigation }) => {
                 >
                   <Image
                     source={{ uri: task.icon }}
-                    style={[styles.subjectIcon]}
+                    style={styles.subjectIcon}
                     resizeMode="contain"
                   />
-                  <Text style={styles.taskTitle}>{task.subjectTitle}</Text>
-                  <Text style={styles.taskCategory}>{task.category}</Text>
-                  <Text style={styles.taskTopic}>{getCustomMessage(task)}</Text>
+                  <Text allowFontScaling={false} style={styles.taskTitle}>{task.subjectTitle}</Text>
+                  <Text allowFontScaling={false} style={styles.taskCategory}>{task.category}</Text>
+                  <Text allowFontScaling={false} style={styles.taskTopic}>{getCustomMessage(task)}</Text>
                 </View>
               ))}
             </React.Fragment>
-          ))}
-        </ScrollView>
+          );
+        })}
+      </ScrollView>
       )}
     </View>
   );
@@ -240,8 +269,8 @@ const styles = StyleSheet.create({
   
     clearAllButton: {
       position: "relative",
-      marginLeft: 240,
-      marginTop: 45,
+      marginLeft: 285,
+      marginTop: 25,
       backgroundColor: "#5AC0EB",
       width: 120,
       height: 35,
@@ -250,7 +279,7 @@ const styles = StyleSheet.create({
   
     clearAllButtonText: {
       fontSize: 18,
-      fontFamily: "GalanoGrotesque-SemiBold",
+      fontFamily: "GalanoGrotesque-Medium",
       color: "white",
       alignSelf: "center",
       marginTop: 10,
@@ -280,33 +309,34 @@ const styles = StyleSheet.create({
   
     header2: {
       fontSize: 22,
-      fontFamily: "GalanoGrotesque-Light",
-      textAlign: "left",
-      color: "#0089C2",
-      marginLeft: 20,
-      marginTop: 40,
-    },
-  
-    dateText: {
-      fontSize: 22,
       fontFamily: "GalanoGrotesque-SemiBold",
       textAlign: "left",
       color: "#0089C2",
       marginLeft: 20,
-      marginTop: 4,
-      marginBottom: -2
+      marginTop: 70,
+      marginBottom: -35
+    },
+  
+    dateText: {
+      fontSize: 18,
+      fontFamily: "GalanoGrotesque-SemiBold",
+      textAlign: "left",
+      color: "#0089C2",
+      marginLeft: 20,
+      marginTop: 15,
+      marginBottom: -13
     },
   
     taskTitle: {
       fontSize: 25,
-      fontFamily: "GalanoGrotesque-Light",
+      fontFamily: "GalanoGrotesque-Medium",
       color: "white",
       marginLeft: 25,
       marginTop: 25,
     },
     taskCategory: {
       fontSize: 20,
-      fontFamily: "GalanoGrotesque-Medium",
+      fontFamily: "GalanoGrotesque-Light",
       color: "white",
       marginLeft: 25,
       marginBottom: 2,
@@ -316,7 +346,7 @@ const styles = StyleSheet.create({
       width: 70,
       height: 70,
       resizeMode: "contain",
-      marginLeft: 240,
+      marginLeft: 265,
       top: "50%",
       marginTop: -35, // Half of the icon's height to vertically center it
       position: "absolute",
@@ -349,9 +379,10 @@ const styles = StyleSheet.create({
     taskItem: {
       backgroundColor: "#f0f0f0",
       borderRadius: 20,
-      width: 340,
-      height: 130,
+      width: 370,
+      height: 150,
       alignSelf: "center",
       marginBottom: 10,
+      marginTop: 10,
     },
 })

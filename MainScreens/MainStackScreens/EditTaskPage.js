@@ -12,9 +12,6 @@ import {
 } from "react-native";
 import React from "react";
 import { useState } from "react";
-import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
-import {  collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { useEffect } from "react";
 import { TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,7 +24,11 @@ import CustomModalDelete from "../Alerts/CustomAlertDelete";
 import CustomModalSmall from "../Alerts/CustomAlertSmall";
 import CustomModalUpdate from "../Alerts/CustomAlertUpdate";
 import { useCurrentTime } from "../MainAssetCode/CurrentTime";
-
+import { onSnapshot, addDoc, collection, getDocs, orderBy, query, where, getFirestore, updateDoc, doc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { Dimensions } from "react-native";
+const screenWidth = Dimensions.get('window').width;
+const screenHeight = Dimensions.get('window').height;
 const EditTaskPage = ({ navigation, route }) => {
   const { task } = route.params;
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
@@ -162,12 +163,9 @@ const EditTaskPage = ({ navigation, route }) => {
         console.log("Deleting task...");
         const auth = getAuth();
         const userId = auth.currentUser.uid;
-        await firebase.firestore()
-          .collection('users')
-          .doc(userId)
-          .collection('tasks')
-          .doc(taskId)
-          .delete();
+        const firestore = getFirestore();
+  
+        await deleteDoc(doc(firestore, 'users', userId, 'tasks', taskId));
         console.log("Task deleted!");
   
         // Navigate back
@@ -179,18 +177,18 @@ const EditTaskPage = ({ navigation, route }) => {
       setDeleteModalVisible(false);
     });
   };
-
+  
   useEffect(() => {
     const auth = getAuth();
     const userId = auth.currentUser.uid;
-
+  
     const firestore = getFirestore();
-
+  
     const q = query(
       collection(firestore, "users", userId, "subjects"),
       orderBy("createdAt", "desc")
     );
-
+  
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const subjects = [];
         querySnapshot.docChanges().forEach((change) => {
@@ -301,8 +299,8 @@ const EditTaskPage = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.header}>Edit {task.subjectTitle} {"\n"}Task Details</Text>
-      <Text style={styles.header2}>Category</Text>
+      <Text allowFontScaling={false} style={styles.header}>Edit {task.subjectTitle} {"\n"}Task Details</Text>
+      <Text allowFontScaling={false} style={styles.header2}>Category</Text>
 
       <ScrollView
         horizontal
@@ -322,7 +320,7 @@ const EditTaskPage = ({ navigation, route }) => {
             }
           }}
         >
-          <Text style={styles.tasklabel}>Class</Text>
+          <Text allowFontScaling={false} style={styles.tasklabel}>Class</Text>
         </TouchableOpacity>
         {selectedCategory === "Class" && (
           <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 85, marginTop: -2, position: "absolute" }]} />
@@ -340,7 +338,7 @@ const EditTaskPage = ({ navigation, route }) => {
             }
           }}
         >
-          <Text style={styles.tasklabel}>Exam</Text>
+          <Text allowFontScaling={false} style={styles.tasklabel}>Exam</Text>
         </TouchableOpacity>
 
         {selectedCategory === "Exam" && (
@@ -358,7 +356,7 @@ const EditTaskPage = ({ navigation, route }) => {
             }
           }}
         >
-          <Text style={styles.tasklabel}>Lab</Text>
+          <Text allowFontScaling={false} style={styles.tasklabel}>Lab</Text>
         </TouchableOpacity>
         {selectedCategory === "Lab" && (
           <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 317, marginTop: -2, position: "absolute" }]} />
@@ -375,7 +373,7 @@ const EditTaskPage = ({ navigation, route }) => {
             }
           }}
         >
-          <Text style={styles.tasklabel}>Study</Text>
+          <Text allowFontScaling={false} style={styles.tasklabel}>Study</Text>
         </TouchableOpacity>
         {selectedCategory === "Study" && (
           <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 432, marginTop: -2, position: "absolute" }]} />
@@ -406,7 +404,7 @@ const EditTaskPage = ({ navigation, route }) => {
 
         >
 
-          <Text style={styles.tasklabel}>Assignment</Text>
+<Text allowFontScaling={false} style={styles.tasklabel}>Assignment</Text>
 
         </TouchableOpacity>
 
@@ -421,7 +419,7 @@ const EditTaskPage = ({ navigation, route }) => {
             }
           }}
         >
-          <Text style={styles.tasklabel}>Presentation</Text>
+          <Text allowFontScaling={false} style={styles.tasklabel}>Presentation</Text>
         </TouchableOpacity>
         {selectedCategory === "Presentation" && (
           <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 300, marginTop: -3, position: "absolute" }]} />
@@ -441,7 +439,7 @@ const EditTaskPage = ({ navigation, route }) => {
             }
           }}
         >
-          <Text style={styles.tasklabel}>Reminder</Text>
+          <Text allowFontScaling={false} style={styles.tasklabel}>Reminder</Text>
 
         </TouchableOpacity>
         {selectedCategory === "Reminder" && (
@@ -595,7 +593,6 @@ const EditTaskPage = ({ navigation, route }) => {
             autoCorrect={false}
             value={Topic}
             onChangeText={(Topic) => setTopic(Topic)}
-            autoCapitalize="characters"
             ref={(input) => {
               this.secondTextInput = input;
             }}
@@ -633,13 +630,13 @@ const EditTaskPage = ({ navigation, route }) => {
           />
 
           <TouchableOpacity activeOpacity={0.7} onPress={showDatePicker}>
-            <Text style={styles.currentDate}>
+          <Text allowFontScaling={false} style={styles.currentDate}>
               {(selectedCategory === "Class" ? " Class Date" : selectedCategory === "Exam" ? " Exam Date" : selectedCategory === "Lab" ? " Lab Date" : selectedCategory === "Study" ? " Study Date" : selectedCategory === "Reminder" ? " Reminder Date" : " Due Date") + ": " + formatDate(selectedDate)}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity activeOpacity={0.7} onPress={showTimePicker}>
-            <Text style={styles.currentTime}>
+          <Text allowFontScaling={false} style={styles.currentTime}>
               {(selectedCategory === "Class" ? "Class Time" : selectedCategory === "Exam" ? "Exam Time" : selectedCategory === "Lab" ? "Lab Time" : selectedCategory === "Study" ? "Study Time" : selectedCategory === "Reminder" ? "Reminder Time" : "Due Time") + ": " + formatTime(selectedDate)}
             </Text>
           </TouchableOpacity>
@@ -722,15 +719,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginLeft: 10,
     marginRight: 10,
+    
   },
   horizontalScrollView2: {
     flexDirection: "row",
   },
   taskView: {
+
     flexDirection: "row",
+   
   },
   taskView2: {
     flexDirection: "row",
+   
   },
   task: {
     backgroundColor: "#5AC0EB",
@@ -772,6 +773,7 @@ const styles = StyleSheet.create({
     width: 150,
     borderRadius: 15,
     marginRight: 10,
+    
   },
 
   tasklabel: {
@@ -788,7 +790,7 @@ const styles = StyleSheet.create({
     color: "#5AC0EB",
     left: 80,
     height: 19,
-    marginTop: 54,
+    marginTop: 120,
     textDecorationLine: "underline"
   },
 
@@ -798,7 +800,7 @@ const styles = StyleSheet.create({
     left: 84,
     height: 19,
     color: "#5AC0EB",
-    marginTop: 62,
+    marginTop: 100,
     textDecorationLine: "underline"
   },
 
@@ -892,12 +894,13 @@ const styles = StyleSheet.create({
     borderBottomColor: "#5AC0EB",
     borderColor: "#0089C2",
     borderWidth: 1.8,
-    width: 340,
+    width: "91%",
     padding: 10,
+    position: "absolute",
     height: 62,
     marginLeft: 18,
     borderRadius: 20,
-    marginTop: 46,
+    marginTop:100,
   },
 
   selectsubjectinput: {
@@ -906,13 +909,13 @@ const styles = StyleSheet.create({
     borderBottomColor: "#0089C2",
     borderColor: "#5AC0EB",
     borderWidth: 1.8,
-    width: 340,
+    width: screenWidth === 414 ? "111.4%" : "116%",
     padding: 10,
     height: 62,
     marginLeft: 18,
     borderRadius: 20,
-    marginTop: 35,
-
+    marginTop: 0,
+    marginBottom: 20,
   },
 
   subjectInputIcon1: {

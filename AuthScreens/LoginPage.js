@@ -23,16 +23,49 @@ import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { Alert } from 'react-native';
 import { Video } from "expo-av";
 import videoFile from '../assets/AnimatedGradient.mp4';
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import app from "../config";
+
+
+const auth = getAuth(app);
+
+
+const screenWidth = Dimensions.get('window').width;
+const screenHeight = Dimensions.get('window').height;
+
+  const getPasswordToggleMarginLeft = () => {
+    if (screenWidth === 430) return 310;
+    if (screenWidth === 414) return 300;
+    if (screenWidth === 375) return 270;
+    return 305;  // default value
+}
+
+const getPasswordToggleMarginTop = () => {
+    if (screenHeight >= 926) return 85;
+    return 94;  // default value
+}
+
+const getForgotPasswordMarginTop = () => {
+    if (screenHeight === 812) return -220;
+    if (screenHeight <= 926) return -300;
+    return -356;  // default value
+}
+
+const getLoginButtonMarginTop = () => {
+    if (screenHeight >= 926) return 525;
+    return 545;  // default value
+}
+
+const getFooterButtonMarginTop = () => {
+  if (screenHeight >= 926) return 580;
+  return 600;  // default value
+}
 
 const LoginPage = () => {
-  const windowHeight = Dimensions.get('window').height;
-const windowWidth = Dimensions.get('window').width;
-const passwordToggleMarginLeft = windowWidth >= 428 ? 316 : 305; // Adjust the values as needed
-const passwordToggleMarginTop = windowHeight >= 926 ? 85 : 94; // Adjust the values as needed
-const forgotPasswordMarginTop = windowHeight >= 926 ? -370 : -300;
-const loginButtonMarginTop = windowHeight >= 926 ? 525 : 545; // Adjust this value as needed
-const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this value as needed
+  
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -46,7 +79,6 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
 
   // forget password
   const forgetPassword = () => {
-    const auth = getAuth();
   
     sendPasswordResetEmail(auth, email)
       .then(() => {
@@ -73,12 +105,11 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
   };
   
   const loginUser = async (email, password) => {
-    const auth = getAuth();
     const firestore = getFirestore();
   
     try {
       if (!email || !password) {
-        Alert.alert("Login", "Please enter an email or password");
+        Alert.alert("Login Error", "Please enter an email or password");
         return; // Don't proceed with login if email or password is missing
       }      
   
@@ -95,21 +126,25 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
       let errorMessage = "";
       switch (error.code) {
         case "auth/invalid-email":
-          errorMessage = "Invalid email address.";
+          Alert.alert('Login Error', 'Invalid email address.');
           break;
-        case "auth/user-disabled":
-          errorMessage = "This account has been disabled.";
+      case "auth/user-disabled":
+          Alert.alert('Login Error', 'This account has been disabled.');
           break;
-        case "auth/user-not-found":
-          errorMessage = "An account with this email was not found";
+      case "auth/user-not-found":
+          Alert.alert('Login Error', 'An account with this email was not found');
           break;
-        case "auth/wrong-password":
-          errorMessage = "Incorrect password or email";
+      case "auth/wrong-password":
+          Alert.alert('Login Error', 'Incorrect password or email');
           break;
-        default:
-          errorMessage = error.message;
-      }
-      Alert.alert("Login", errorMessage);
+      case "auth/network-request-failed":
+          Alert.alert('Network Error', 'Please check your internet connection and try again.');
+          break;
+      default:
+          Alert.alert('Login Error', errorMessage);
+          break;
+  }
+      Alert.alert("Login Error", errorMessage);
     }
   };
 
@@ -125,8 +160,8 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
       <View>
         <TextGradient style={styles.mainText}>ACADA</TextGradient>
 
-        <Text style={styles.subText}>Study Better With Friends</Text>
-        <Text style={styles.loginText}>Login</Text>
+        <Text allowFontScaling={false} style={styles.subText}>Study Better With Friends</Text>
+        <Text allowFontScaling={false} style={styles.loginText}>Login</Text>
       </View>
       <KeyboardAvoidingView
         enabled
@@ -137,7 +172,7 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.emailText}> E-mail</Text>
+          <Text allowFontScaling={false} style={styles.emailText}> E-mail</Text>
           <View style={[styles.loginContainer, { flex: 0.8 }]}>
             <TextInput
               value={email}
@@ -148,7 +183,7 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
               autoCapitalize="none"
               autoCorrect={true}
             />
-            <Text style={styles.passwordText}>Password</Text>
+            <Text allowFontScaling={false} style={styles.passwordText}>Password</Text>
             <View style={styles.passwordSection}>
               <TextInput
               
@@ -161,7 +196,7 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
                 ref={(input) => { this.secondTextInput = input; }}
               />
             </View>
-            <View style={[styles.passwordToggleContainer, { marginLeft: passwordToggleMarginLeft, marginTop: passwordToggleMarginTop }]}>
+            <View style={[styles.passwordToggleContainer, { marginLeft: getPasswordToggleMarginLeft(), marginTop: getPasswordToggleMarginTop() }]}>
               <TouchableOpacity activeOpacity={1} onPress={toggleShowPassword}>
                 <Image
                   source={
@@ -183,22 +218,22 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
         forgetPassword();
       }}
     >
-      <Text style={[styles.forgotpasswordText,{ marginTop: forgotPasswordMarginTop }]}>Forgot password?</Text>
+      <Text allowFontScaling={false} style={[styles.forgotpasswordText,{  marginTop: getForgotPasswordMarginTop(), }]}>Forgot password?</Text>
       </TouchableOpacity>
       <TouchableOpacity
         activeOpacity={0.76}
-        style={[styles.loginButton, { top: loginButtonMarginTop }]} // Apply the calculated marginTop here
+        style={[styles.loginButton, { top: getLoginButtonMarginTop() }]} // Apply the calculated marginTop here
         onPress={() => loginUser(email, password)}
 
       >
-        <Text style={styles.loginButtonText}>Login</Text>
+        <Text allowFontScaling={false} style={styles.loginButtonText}>Login</Text>
 
 
       </TouchableOpacity>
 
 
-      <View style = {[styles.footer,  { marginTop: footerButtonMarginTop , position: "absolute", alignSelf: "center"}]}>
-      <Text style={styles.signupsubText2}>Or login with</Text>
+      <View style = {[styles.footer,  { marginTop: getFooterButtonMarginTop(), position: "absolute", alignSelf: "center"}]}>
+      <Text allowFontScaling={false} style={styles.signupsubText2}>Or login with</Text>
       <View style={styles.socialImages}>
         <TouchableOpacity activeOpacity={0.76}>
           <Image
@@ -224,9 +259,9 @@ const footerButtonMarginTop = windowHeight >= 926 ? 580: 600; // Adjust this val
       </View>
       <View style={styles.footerText}>
         
-        <Text style = {styles.accountText}>Don't have an account?</Text>
+      <Text allowFontScaling={false} style = {styles.accountText}>Don't have an account?</Text>
         <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.goBack()}>
-          <Text style={styles.highlightedText}> Sign up</Text>
+        <Text allowFontScaling={false} style={styles.highlightedText}> Sign up</Text>
         </TouchableOpacity>
         
       </View>
@@ -280,7 +315,7 @@ const styles = StyleSheet.create({
       color: "white",
       fontSize: 14,
       height: 20,
-      marginTop: -110,
+      marginTop: -112,
       marginRight: 40,
       textAlign: "right",
       textDecorationLine: "underline",
@@ -326,7 +361,7 @@ const styles = StyleSheet.create({
       fontSize: 16,
       fontFamily: "GalanoGrotesque-Light",
       color: "white",
-      marginTop: 14,
+      marginTop: 14
     },
     socialImages: {
       flexDirection: "row",
@@ -372,8 +407,8 @@ const styles = StyleSheet.create({
     passwordToggleContainer: {
       flex: 0,
       position: "absolute",
-      marginLeft: 275,
-      marginTop: 85,
+      marginLeft: getPasswordToggleMarginLeft(),
+      marginTop: getPasswordToggleMarginTop(),
     },
     footerImages: {
       height: 50,

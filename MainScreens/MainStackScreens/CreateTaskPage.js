@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import React from "react";
 import { useState } from "react";
-import { firebase } from "../../config";
 import { useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -27,6 +26,8 @@ import { Alert } from "react-native";
 import CustomModal from "../Alerts/CustomAlert";
 import CustomModalSmall from "../Alerts/CustomAlertSmall";
 import CustomModalUpdate from "../Alerts/CustomAlertUpdate";
+import { onSnapshot, addDoc, collection, getDocs, orderBy, query, where, getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const CreateTaskPage = ({navigation}) => {
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
@@ -43,7 +44,9 @@ const CreateTaskPage = ({navigation}) => {
   const [selectedSubjectColor, setSelectedSubjectColor] = useState(null);
 
 
-  
+  const db = getFirestore(); // Define the Firestore instance
+  const auth = getAuth();    // Define the Auth instance
+
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalButtonText, setModalButtonText] = useState('');
@@ -138,33 +141,34 @@ const handleTimeChange = (time) => {
 
 
   useEffect(() => {
-    const userId = firebase.auth().currentUser.uid;
-    const unsubscribe = firebase
-      .firestore()
-      .collection("users")
-      .doc(userId)
-      .collection("subjects")
-      .orderBy("createdAt", "desc")
-      .onSnapshot((querySnapshot) => {
-        const subjects = [];
-        querySnapshot.docChanges().forEach((change) => {
-          if (change.type === "modified") {
-            const subject = change.doc.data();
-            updateTaskSubjectDetails(
-              change.doc.id,
-              subject.icon,
-              subject.subjectcolor
-            );
-          }
-        });
-        querySnapshot.forEach((doc) => {
-          const subject = doc.data();
-          subject.id = doc.id;
-          subjects.push(subject);
-        });
-        setSubjects(subjects);
+    const userId = auth.currentUser.uid;
+    const q = query(
+      collection(db, "users", userId, "subjects"),
+      orderBy("createdAt", "desc")
+    );
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const subjects = [];
+      querySnapshot.docChanges().forEach((change) => {
+        if (change.type === "modified") {
+          const subject = change.doc.data();
+          // Assuming you have a function called `updateTaskSubjectDetails` which you didn't include in the provided code.
+          updateTaskSubjectDetails(
+            change.doc.id,
+            subject.icon,
+            subject.subjectcolor
+          );
+        }
       });
-    return unsubscribe;
+      querySnapshot.forEach((doc) => {
+        const subject = doc.data();
+        subject.id = doc.id;
+        subjects.push(subject);
+      });
+      setSubjects(subjects);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const saveTask= async (
@@ -202,40 +206,33 @@ const handleTimeChange = (time) => {
       return;
     }
 
-
     const selectedSubjectData = subjects.find(
       (item) => item.title === selectedSubject
     );
-    // Retrieve the icon and color from the selected subject
     const selectedSubjectIcon = selectedSubjectData.icon;
     const selectedSubjectColor = selectedSubjectData.subjectcolor;
-  
-    const userId = firebase.auth().currentUser.uid;
-    await firebase
-    .firestore()
-    .collection("users")
-    .doc(firebase.auth().currentUser.uid)
-    .collection("tasks")
-    .add({
-      subjectId: selectedSubjectData.id, // Add the selected subject's ID
-      subjectTitle: selectedSubject,
-      category: selectedCategory,
-      topic: Topic,
-      date: selectedDate,
-      time: selectedTime,
-      icon: selectedSubjectIcon, // Add the selected subject's icon
-      color: selectedSubjectColor, // Add the selected subject's color
-      repeat: selectedCategory === "Lab" || selectedCategory === "Class",
-      isCompleted: false, // Add the isCompleted field initialized to false
-    })
-      .then(() => {
-        console.log("Task created successfully!");
-      })
-      .catch((error) => {
-        console.error("Error creating task: ", error);
+
+    const userId = auth.currentUser.uid;
+    try {
+      await addDoc(collection(db, "users", userId, "tasks"), {
+        subjectId: selectedSubjectData.id,
+        subjectTitle: selectedSubject,
+        category: selectedCategory,
+        topic: Topic,
+        date: selectedDate,
+        time: selectedTime,
+        icon: selectedSubjectIcon,
+        color: selectedSubjectColor,
+        repeat: selectedCategory === "Lab" || selectedCategory === "Class",
+        isCompleted: false,
       });
-    navigation.goBack();
+      console.log("Task created successfully!");
+      navigation.goBack();
+    } catch (error) {
+      console.error("Error creating task: ", error);
+    }
   };
+
 
 
   return (
@@ -253,8 +250,8 @@ const handleTimeChange = (time) => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.header}>Create {"\n"}New Task</Text>
-      <Text style={styles.header2}>Category</Text>
+      <Text allowFontScaling={false} style={styles.header}>Create {"\n"}New Task</Text>
+      <Text allowFontScaling={false} style={styles.header2}>Category</Text>
 
       <ScrollView
   horizontal
@@ -274,7 +271,7 @@ const handleTimeChange = (time) => {
       }
     }}
   >
-    <Text style={styles.tasklabel}>Class</Text>
+    <Text allowFontScaling={false} style={styles.tasklabel}>Class</Text>
   </TouchableOpacity>
   {selectedCategory === "Class" && (
               <Ionicons name="checkmark-circle" size={25} color="#0089C2" style = {[styles.buttonstyle,{marginLeft: 85, marginTop: -2, position: "absolute"}]}/>
@@ -292,7 +289,7 @@ const handleTimeChange = (time) => {
       }
     }}
   >
-    <Text style={styles.tasklabel}>Exam</Text>
+    <Text allowFontScaling={false} style={styles.tasklabel}>Exam</Text>
   </TouchableOpacity>
 
   {selectedCategory === "Exam" && (
@@ -310,7 +307,7 @@ const handleTimeChange = (time) => {
       }
     }}
   >
-    <Text style={styles.tasklabel}>Lab</Text>
+    <Text allowFontScaling={false} style={styles.tasklabel}>Lab</Text>
   </TouchableOpacity>
   {selectedCategory === "Lab" && (
               <Ionicons name="checkmark-circle" size={25} color="#0089C2" style = {[styles.buttonstyle,{marginLeft: 317, marginTop: -2, position: "absolute"}]}/>
@@ -327,7 +324,7 @@ const handleTimeChange = (time) => {
       }
     }}
   >
-    <Text style={styles.tasklabel}>Study</Text>
+    <Text allowFontScaling={false} style={styles.tasklabel}>Study</Text>
   </TouchableOpacity>
   {selectedCategory === "Study" && (
               <Ionicons name="checkmark-circle" size={25} color="#0089C2" style = {[styles.buttonstyle,{marginLeft: 432, marginTop: -2, position: "absolute" }]}/>
@@ -358,7 +355,7 @@ const handleTimeChange = (time) => {
     
   >
     
-    <Text style={styles.tasklabel}>Assignment</Text>
+    <Text allowFontScaling={false} style={styles.tasklabel}>Assignment</Text>
     
   </TouchableOpacity>
 
@@ -373,7 +370,7 @@ const handleTimeChange = (time) => {
       }
     }}
   >
-    <Text style={styles.tasklabel}>Presentation</Text>
+    <Text allowFontScaling={false} style={styles.tasklabel}>Presentation</Text>
   </TouchableOpacity>
   {selectedCategory === "Presentation" && (
               <Ionicons name="checkmark-circle" size={25} color="#0089C2" style = {[styles.buttonstyle,{marginLeft: 300, marginTop: -3, position: "absolute"}]}/>
@@ -393,7 +390,7 @@ const handleTimeChange = (time) => {
       }
     }}
   >
-    <Text style={styles.tasklabel}>Reminder</Text>
+    <Text allowFontScaling={false} style={styles.tasklabel}>Reminder</Text>
     
   </TouchableOpacity>
   {selectedCategory === "Reminder" && (
@@ -422,7 +419,7 @@ const handleTimeChange = (time) => {
     opacity: 1,
     marginLeft: 18.5,
     marginTop: 50,
-    width: 339,
+    width:"91%",
     borderBottomColor: "#5AC0EB",
     borderColor: "#0089C2",
     borderWidth: 1.8,
@@ -444,7 +441,7 @@ const handleTimeChange = (time) => {
   containerStyle={{
     height: 62,
     zIndex: 2,
-    width: 340,
+    width: "91%",
     marginTop: -20,
     marginBottom: 35,
     position: "absolute",
@@ -529,7 +526,7 @@ const handleTimeChange = (time) => {
     </TouchableOpacity>
 
 
-    <TextInput
+    <TextInput allowFontScaling={false}
   style={[
     styles.subjectinput,
     styles.subjectinputmargin,
@@ -544,7 +541,6 @@ const handleTimeChange = (time) => {
   autoCorrect={false}
   value={Topic}
   onChangeText={(Topic) => setTopic(Topic)}
-  autoCapitalize="characters"
   ref={(input) => {
     this.secondTextInput = input;
   }}
@@ -583,13 +579,13 @@ const handleTimeChange = (time) => {
 
 
 <TouchableOpacity activeOpacity={0.6} onPress={showDatePicker}>
-<Text style={styles.currentDate}>
+<Text allowFontScaling={false} style={styles.currentDate}>
   {(selectedCategory === "Class" ? " Class Date" : selectedCategory === "Exam" ? " Exam Date" : selectedCategory === "Lab" ? " Lab Date" : selectedCategory === "Study" ? " Study Date" : selectedCategory === "Reminder" ? " Reminder Date" : " Due Date") + ": " + formatDate(selectedDate)}
 </Text>
 </TouchableOpacity>
 
 <TouchableOpacity activeOpacity={0.6} onPress={showTimePicker}>
-<Text style={styles.currentTime}>
+<Text allowFontScaling={false} style={styles.currentTime}>
   {(selectedCategory === "Class" ? "Class Time" : selectedCategory === "Exam" ? "Exam Time" : selectedCategory === "Lab" ? "Lab Time" : selectedCategory === "Study" ? "Study Time" : selectedCategory === "Reminder" ? "Reminder Time" : "Due Time") + ": " + formatTime(selectedDate)}
 </Text>
 </TouchableOpacity>    
@@ -810,7 +806,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#5AC0EB",
     borderColor: "#0089C2",
     borderWidth: 1.8,
-    width: 340,
+    width: "91%",
     padding: 10,
     height: 62,
     marginLeft: 18,
@@ -824,7 +820,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#0089C2",
     borderColor: "#5AC0EB",
     borderWidth: 1.8,
-    width: 340,
+    width: "100.4%",
     padding: 10,
     height: 62,
     marginLeft: 18,

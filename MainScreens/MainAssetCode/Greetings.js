@@ -13,7 +13,7 @@ const Greetings = () => {
     else if (hours >= 17 && hours <= 24)
        greet = "evening";
     
-    return <Text>Good {greet},</Text>
+    return <Text allowFontScaling={false}>Good {greet},</Text>
 }
 
 export default Greetings;

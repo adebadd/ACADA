@@ -16,14 +16,25 @@ import {
   import Swiper from "react-native-swiper";
   import { useCallback } from "react";
   import { useFonts } from "expo-font";
-  import { getAuth } from "firebase/auth";
-  import { getFirestore, doc, collection, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
-  import { getStorage, ref, getDownloadURL } from "firebase/storage";
+  import { getFirestore, collection, doc, orderBy, onSnapshot, query } from 'firebase/firestore';
+  import { getAuth, onAuthStateChanged } from 'firebase/auth';
+  import { getStorage, ref, getDownloadURL } from 'firebase/storage';
+  import { Dimensions } from 'react-native';
+  const screenWidth = Dimensions.get('window').width;
 
-  const fetchTasks = (date, setTasks) => {
-  
-    const auth = getAuth();
+  const getScheduleWidth = () => {
+    if (screenWidth === 414 ) return 395;
+    if (screenWidth === 375) return 355;
+    if (screenWidth === 430 || 428) return 410;
+    return 410;  // default value
+}
+
+const Dashboard = ({ navigation}) => {
+
+
+  const auth = getAuth();
     const currentUser = auth.currentUser;
+  const fetchTasks = (date, setTasks) => {
   
     if (!currentUser) {
       console.log("No user is currently logged in.");
@@ -73,13 +84,6 @@ const firestore = getFirestore();
 const docRef = doc(firestore, "users", auth.currentUser.uid);
 
 
-const Dashboard = ({ navigation}) => {
-
-if (!currentUser) {
-  // Redirect to login page
-  navigation.navigate('LandingPage');
-  return null;
-}
   const [name, setName] = useState("");
   const [tasks, setTasks] = useState([]);
   const [profileImage, setProfileImage] = useState(null);
@@ -107,7 +111,7 @@ const firestore = getFirestore();
 const docRef = doc(firestore, "users", auth.currentUser.uid);
   
     // Listen to real-time changes
-    const unsubscribe = docRef.onSnapshot((doc) => {
+    const unsubscribe = onSnapshot(docRef, (doc) => {
       if (doc.exists) {
         fetchProfileImage();
       } else {
@@ -299,7 +303,7 @@ useEffect(() => {
       ? moment(task.date.toDate()).format("MMMM Do")
       : "";
     const formattedTime = task.date
-      ? moment(task.date.toDate()).format("h:mm A")
+      ? moment(task.date.toDate()).format("HH:mm A")
       : "";
     const isLongTopic = (topic) => {
       return topic && topic.length > 15;
@@ -444,6 +448,13 @@ useEffect(() => {
         <View style={styles.scheduleContainer}>
         <Text allowFontScaling={false} style={styles.header}>Schedule</Text>
         <Text allowFontScaling={false} style={styles.header1}>Upcoming tasks and study goals</Text>
+
+        <ScrollView
+      horizontal={true}
+      pagingEnabled={true}
+      showsHorizontalScrollIndicator={false}
+      style={styles.snappableScrollView}
+    >
           <View style={styles.schedule}>
             {tasks.length > 0 ? (
               <Swiper
@@ -475,6 +486,16 @@ useEffect(() => {
               renderAddTaskButton()
             )}
           </View>
+          <TouchableOpacity
+        style={styles.touchableContainer}
+        onPress={() => {
+          // ... handle your touchable press here ...
+        }}
+      >
+        {/* Content of the touchable */}
+        <Text>My Touchable Content</Text>
+      </TouchableOpacity>
+    </ScrollView>
         </View>
 
 
@@ -513,21 +534,7 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
 
-  profileIcon: {
-    width: 50,
-    height: 50,
-    marginLeft: 290,
-    marginTop: 13,
-    shadowColor: "black",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.7,
-    borderRadius: 50,
-    shadowColor: "black",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 7,
-    shadowRadius: 5,
-    
-  },
+
 
   profileImage: {
     borderRadius: 20,
@@ -536,8 +543,8 @@ const styles = StyleSheet.create({
   profileIcon: {
     width: 50,
     height: 50,
-    marginLeft: 290,
-    marginTop: 13,
+    left: screenWidth === 375 ? "500%" : "560%",
+    marginTop: 8,
     borderRadius: 100,
   },
 
@@ -555,9 +562,30 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 
+  
+  snappableScrollView: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  swiperContainer: {
+    width: '100%', // ensure it takes up the full width of the screen
+    // ... any other styling you want for the swiper container ...
+  },
+  touchableContainer: {
+    width: getScheduleWidth(),
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 190,
+    backgroundColor: "#5AC0EB",
+    borderRadius: 40,
+    width: screenWidth === 414 ? 395 : 410,  // 90% for iPhone 11 and phones with its size
+    marginRight: 10,
+    marginTop: 10,
+  },
+
   completedtaskIcon: {
-    marginTop: 13,
-    marginLeft: 10,
+    marginTop: 8,
+    left: screenWidth === 375 ? "-60%" : "8%",
     width: 50,
     height: 50,
     borderRadius: 50,
@@ -628,7 +656,7 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    fontSize: 32,
+    fontSize: 26,
     fontFamily: "GalanoGrotesque-SemiBold",
     textAlign: "left",
     color: "#0089C2",
@@ -644,11 +672,11 @@ const styles = StyleSheet.create({
     color: "#5AC0EB",
   },
   subjectstext: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "white",
-    marginTop: 10,
+    marginTop: 8,
   },
   editicon: {
     height: 20,
@@ -677,12 +705,12 @@ const styles = StyleSheet.create({
   taskItem: {
     height: 190,
     borderRadius: 40,
-    width: 412,
+    width: getScheduleWidth(),
   },
   taskTitle: {
     fontSize: 26,
     marginLeft: 20,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-Medium",
     color: "white",
     marginTop: 36,
 
@@ -690,7 +718,7 @@ const styles = StyleSheet.create({
   taskCategory: {
     fontSize: 25,
     marginLeft: 19,
-    fontFamily: "GalanoGrotesque-Medium",
+    fontFamily: "GalanoGrotesque-Light",
     color: "white",
     marginBottom: 2,
   },
@@ -724,14 +752,14 @@ const styles = StyleSheet.create({
   },
   schedule: {
     marginTop: 10,
+    marginRight: 10,
     backgroundColor: "#5AC0EB",
     marginLeft: 10,
     height: 190,
-    width: 412,
+    width: getScheduleWidth(),
     borderRadius: 40,
     marginBottom: 200,
   },
-
   tabbariconhome: {
     height: 26,
     width: 26,

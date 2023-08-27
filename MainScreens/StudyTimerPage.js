@@ -1,19 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Animated, } from 'react-native';
+import { StyleSheet, Text, View} from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { firebase } from "../config";
 import { FlatList } from 'react-native';
 import { Dimensions } from 'react-native';
 import { Image } from 'react-native';
 import { TouchableOpacity } from 'react-native';
-import { CountdownCircleTimer } from 'react-native-countdown-circle-timer';
+import { CountdownCircleTimer } from 'react-native-countdown-circle-timer'
+import { onSnapshot, addDoc, collection, getDocs, orderBy, query, where, getFirestore, updateDoc, doc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import playIcon from '../assets/studytimericons/play.png';
+import pauseIcon from '../assets/studytimericons/pause.png';
+import stopIcon from '../assets/studytimericons/stop.png';
 
+const screenHeight = Dimensions.get('window').height;
 const StudyTimerPage = ({ navigation }) => {
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [open, setOpen] = useState(false);
   const flatListRef = useRef(null);
-  const [playButtonSource, setPlayButtonSource] = useState(require("../assets/studytimericons/play.png"));
+  const [playButtonSource, setPlayButtonSource] = useState(playIcon);
   const [remainingTime, setRemainingTime] = useState(50 * 60);
   const [longPressRemainingTime, setLongPressRemainingTime] = useState(null);
   const [timerKey, setTimerKey] = useState(0);
@@ -24,27 +29,64 @@ const StudyTimerPage = ({ navigation }) => {
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [isOnLongBreak, setIsOnLongBreak] = useState(false);
   const [isLongBreak, setIsLongBreak] = useState(false)
+  const [gracePeriod, setGracePeriod] = useState(false);
+  const screenWidth = Dimensions.get('window').width;
+
+
+
+  const menuItems = [
+    { title: "Study Timer", selected: true, key: "studyTimer" },
+    { title: "Study Stats", selected: false, key: "stats" },
+  ];
+  const renderMenuItem = ({ item, index }) => {
+  const handleItemPress = item.key ? handleMenuItemPress : handlePress;
+
+  return (
+    <TouchableOpacity onPress={() => handleItemPress(index)} activeOpacity={0.5}>
+      <View style={styles.titleItem}>
+        <Text allowFontScaling={false} style={[styles.titleText, item.selected && styles.selectedText]}>{item.title}</Text>
+        {item.selected && <View style={styles.selectedIndicator} />}
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const handleMenuItemPress = (index) => {
+  if (index === 0) { 
+    flatListRef.current.scrollTo({ x: 0, y: 0, animated: true });
+  } else if (index === 1) {
+    flatListRef.current.scrollTo({ x: screenWidth, y: 0, animated: true });
+  }
+  menuItems.forEach((item, idx) => {
+    item.selected = idx === index;
+  });
+};
+
+
+
   useEffect(() => {
-    const userId = firebase.auth().currentUser.uid;
-    const unsubscribe = firebase
-      .firestore()
-      .collection("users")
-      .doc(userId)
-      .collection("subjects")
-      .orderBy("createdAt", "desc")
-      .onSnapshot((querySnapshot) => {
-        const subjects = [];
-     
-        querySnapshot.forEach((doc) => {
-          const subject = doc.data();
-          subject.id = doc.id;
-          subjects.push(subject);
+    const auth = getAuth();
+    const userId = auth.currentUser.uid;
+
+    const db = getFirestore();
+
+    const subjectsQuery = query(
+      collection(doc(db, "users", userId), "subjects"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(subjectsQuery, (querySnapshot) => {
+        const subjects = querySnapshot.docs.map((doc) => {
+            const subject = doc.data();
+            subject.id = doc.id;
+            return subject;
         });
         setSubjects(subjects);
-      });
-    return unsubscribe;
-  }, []);
+    });
 
+    return unsubscribe;
+
+}, []);
 
   const [studyStyle, setStudyStyle] = useState({
     title: 'Pomodoro',
@@ -56,18 +98,20 @@ const StudyTimerPage = ({ navigation }) => {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const handlePlayButtonPress = () => {
+    if (gracePeriod) return;  // Prevent starting during grace period
+
     setIsPlaying(!isPlaying);
     if (!isPlaying) {
-      if (isOnLongBreak) {
-        setTimerStatus("Long Break");
-      } else {
-        setTimerStatus(isOnBreak ? "Break" : "Focus");
-      }
+        if (isOnLongBreak) {
+            setTimerStatus("Long Break");
+        } else {
+            setTimerStatus(isOnBreak ? "Break" : "Focus");
+        }
     } else {
-      setTimerStatus("Paused");
+        setTimerStatus("Paused");
     }
-    setPlayButtonSource(isPlaying ? require("../assets/studytimericons/play.png") : require("../assets/studytimericons/pause.png"));
-  };
+    setPlayButtonSource(isPlaying ? playIcon : pauseIcon);
+};
 
   useEffect(() => {
     if (longPressRemainingTime !== null) {
@@ -75,7 +119,7 @@ const StudyTimerPage = ({ navigation }) => {
         if (longPressRemainingTime !== null) {
           setIsPlaying(false);
           setRemainingTime(50 * 60);
-          setPlayButtonSource(require("../assets/studytimericons/stop.png"));
+          setPlayButtonSource(stopIcon);
         }
       }, 2000);
       return () => clearTimeout(timerId);
@@ -117,7 +161,7 @@ const StudyTimerPage = ({ navigation }) => {
       }
     }
     setIsPlaying(false);
-    setPlayButtonSource(require("../assets/studytimericons/play.png"));
+    setPlayButtonSource(isPlaying ? playIcon : pauseIcon);
   
     
  
@@ -134,7 +178,7 @@ const StudyTimerPage = ({ navigation }) => {
       setIsOnBreak(false);
       setIsOnLongBreak(false);
       setIsPlaying(false);
-      setPlayButtonSource(require("../assets/studytimericons/play.png"));
+      setPlayButtonSource(playIcon);
       setAreComponentsVisible(true);
     }
   };
@@ -142,11 +186,11 @@ const StudyTimerPage = ({ navigation }) => {
   const [titles, setTitles] = useState([
     {title: "Pomodoro", selected: true},
     {title: "Animedoro", selected: false},
-    {title: "30/5/30/10", selected: false},
+    {title: "Thirty-Five", selected: false},
     {title: "90-Minute", selected: false},
     {title: "Pomodoro+", selected: false},
     {title: "Fifty-Two", selected: false},  
-    {title: "Custom Pro", selected: false},  
+    {title: "Customize", selected: false},  
 ]);
 
 
@@ -180,9 +224,9 @@ const handlePress = (index) => {
           cycles: 4,
         });
       break;
-      case '30/5/30/10':
+      case 'Thirty-Five':
         setStudyStyle({
-          title: '30/5/30/10',
+          title: 'Thirty-Five',
           studyMinutes: 30,
           breakMinutes: 5,
           longBreakMinutes: 10,
@@ -217,20 +261,28 @@ const handlePress = (index) => {
 
 const handlePressIn = () => {
   setAreComponentsVisible(false);
+
+  // After 5 seconds, stop the timer and show the "Stopped" status and stop.png
   const timerId = setTimeout(() => {
-    setPlayButtonSource(require("../assets/studytimericons/stop.png"));
-    setTimerStatus("Stopped");
-    setTimeout(() => {
+      setPlayButtonSource(stopIcon);
+      setTimerStatus("Stopped");
       setIsPlaying(false);
-      setPlayButtonSource(require("../assets/studytimericons/play.png"));
-      setTimerKey(prevKey => prevKey + 1); // Increment timerKey to reset the timer
-      setRemainingTime(studyStyle.studyMinutes * 60); // Reset remainingTime to the study time
-      setCurrentCycle(1); // Reset currentCycle to 1
-      setIsOnBreak(false); // Reset isOnBreak to false
-      setAreComponentsVisible(true);
-      setTimerStatus("Press Start");
-    }, 2000);
-  }, 3000);
+      
+      // Start the grace period
+      setGracePeriod(true);
+
+      setTimeout(() => {
+          setPlayButtonSource(playIcon);
+          setTimerKey(prevKey => prevKey + 1);
+          setRemainingTime(studyStyle.studyMinutes * 60);
+          setCurrentCycle(1);
+          setIsOnBreak(false);
+          setAreComponentsVisible(true);
+          setTimerStatus("Press Start");
+          setGracePeriod(false);  // End the grace period
+      }, 2000);  // 2000 milliseconds = 2 seconds
+  }, 5000);  // 5000 milliseconds = 5 seconds
+
   setLongPressTimer(timerId);
 };
 
@@ -243,7 +295,7 @@ const renderItem = ({ item, index }) => {
   return (
     <TouchableOpacity onPress={() => handlePress(index)} activeOpacity={0.5}>
       <View style={styles.titleItem}>
-        <Text style={[styles.titleText, item.selected && styles.selectedText]}>{item.title}</Text>
+      <Text allowFontScaling={false} style={[styles.titleText, item.selected && styles.selectedText]}>{item.title}</Text>
         {item.selected && <View style={styles.selectedIndicator} />}
       </View>
     </TouchableOpacity>
@@ -264,13 +316,13 @@ const visibleItemsCount = 3; // changed from 5 to 3
         open={open}
         dropDownContainerStyle={{
           opacity: 1,
-          marginTop: 139,
-          width: 350,
+          marginTop: 160,
+          width: 380,
           borderBottomColor: "#5AC0EB",
           borderTopColor: "white",
           borderColor: "#0089C2",
           borderWidth: 1.8,
-          borderRadius: 0,
+          borderRadius: 10,
           zIndex: 10,
           alignSelf: "center",
         }}
@@ -366,40 +418,52 @@ const visibleItemsCount = 3; // changed from 5 to 3
   duration={isOnBreak ? (currentCycle === 4 ? studyStyle.longBreakMinutes * 60 : studyStyle.breakMinutes * 60) : studyStyle.studyMinutes * 60}
   colors={['#5AC0EB', '#2A99C8', '#0089C2', '#01668B']}
   colorsTime={[300, 200, 100, 50]}
-  size={300}
+  size={320}
   strokeWidth={18}
   onComplete={handleComplete}
 >
   {({ remainingTime }) => {
     const minutes = Math.floor(remainingTime / 60);
     const seconds = remainingTime % 60;
-    return <Text style={styles.timerText}>{`${minutes}:${seconds < 10 ? '0' : ''}${seconds}`}</Text>
+    return <Text allowFontScaling={false} style={styles.timerText}>{`${minutes}:${seconds < 10 ? '0' : ''}${seconds}`}</Text>
   }}
 </CountdownCircleTimer>
 
 </View>
-<Text style={styles.studyTimerTitle}>{studyStyle.title}</Text>
-<Text style={styles.subjectTitle}>{timerStatus}</Text>
-<View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 392, position: "absolute", alignSelf: "center" }}>
+<Text allowFontScaling={false} style={styles.subjectTitle}>{timerStatus}</Text>
+<View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: "80%", position: "absolute", alignSelf: "center",  marginTop: screenHeight === 896 ? "80%" : "77.5%", }}>
   <View style={{ height: 10, width: 10, borderRadius: 5, backgroundColor: currentCycle > 1 ? '#5AC0EB' : '#D3D3D3', margin: 5}} />
   <View style={{ height: 10, width: 10, borderRadius: 5, backgroundColor: currentCycle > 2 ? '#5AC0EB' : '#D3D3D3', margin: 5}} />
   <View style={{ height: 10, width: 10, borderRadius: 5, backgroundColor: currentCycle > 3 ? '#5AC0EB' : '#D3D3D3', margin: 5}} />
   <View style={{ height: 10, width: 10, borderRadius: 5, backgroundColor: currentCycle > 4 ? '#5AC0EB' : '#D3D3D3', margin: 5}} />
 </View>
-<Image
-          style={styles.infoButton}
-          source={require("../assets/studytimericons/info.png")}
-        />
+<View style={styles.titleContainer}>
+  <Text allowFontScaling={false} style={styles.studyTimerTitle}>{studyStyle.title}</Text>
+  <Image
+    style={styles.infoButton}
+    source={require("../assets/studytimericons/info.png")}
+  />
+</View>
 
 <TouchableOpacity
-  onPress={handlePlayButtonPress}
-  onPressIn={handlePressIn}
-  onPressOut={handlePressOut}
-  style={styles.playButton}
+    onPress={handlePlayButtonPress}
+    onPressIn={handlePressIn}
+    onPressOut={handlePressOut}
+    style={[styles.playButton, gracePeriod ? { opacity: 0.5 } : { opacity: 1 }]}  // Adjust opacity here
 >
-  <Image source={playButtonSource} style={{height: 45, width: 45, resizeMode: "contain"}} />
+    <Image source={playButtonSource} style={{height: 45, width: 45, resizeMode: "contain"}} />
 </TouchableOpacity>
 
+
+<View style={styles.studyTimerInfoContainer}>
+    <Image
+        style={styles.studyTimerInfoIcon}
+        source={require("../assets/studytimericons/info.png")}
+    />
+    <Text allowFontScaling={false} style={styles.studyTimerInfo}>
+        Hold the pause button for 5 seconds{"\n"}              to end study session.
+    </Text>
+</View>
 
   </View>
   );
@@ -413,11 +477,11 @@ const styles = StyleSheet.create({
     borderBottomColor: "#0089C2",
     borderColor: "#5AC0EB",
     borderWidth: 1.8,
-    width: 350,
+    width: 380,
     height: 30,
     alignSelf: "center",
-    borderRadius: 1,
-    marginTop: 140,
+    borderRadius: 10,
+    marginTop: 150,
 
   },
 
@@ -431,9 +495,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   flatList: {
-    marginTop: 50,
+    marginTop: '15%',
     position: "absolute",
     height: 60,
+    marginRight: -2
   },
   titleList: {
     paddingTop: 20,
@@ -447,6 +512,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 0,
   },
+  titleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: "-43%",
+  },
   titleText: {
     fontSize: 22,
     fontFamily: "GalanoGrotesque-SemiBold",
@@ -458,48 +529,46 @@ const styles = StyleSheet.create({
   selectedIndicator: {
     position: "absolute",
     marginTop: 25,
-    width: "75%",
+    width: "80%",
     height: 2,
     backgroundColor: "#5AC0EB",
   },
   timerContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 220,
+    marginTop: '66%',
   },
   timerText: {
     fontSize: 65,
-    fontFamily: "GalanoGrotesque-Medium",
+    fontFamily: "GalanoGrotesque-SemiBold",
     color: "#5AC0EB",
     marginTop: -90
   },
   studyTimerTitle:{
     fontSize: 25,
-    fontFamily: "GalanoGrotesque-Medium",
+    fontFamily: "GalanoGrotesque-Light",
     color: "#5AC0EB",
-    marginTop: 350,
-    marginLeft: 120,
-    position: "absolute"
+    alignSelf: "center",
+    marginLeft: 0,
   },
   subjectTitle:{
     fontSize: 20,
-    fontFamily: "GalanoGrotesque-Light",
+    fontFamily: "GalanoGrotesque-Medium",
     color: "#5AC0EB",
-    marginTop: 372,
+    marginTop: screenHeight === 896 ? "106%" : "103%",
     alignSelf: "center",
     position: "absolute"
   },
   infoButton: {
-    position: "absolute",
     height: 18,
     width: 18,
-    marginTop: 352.8,
-    marginLeft: 235,
+    marginLeft: 5,
+    marginTop: 2,
     resizeMode: "contain",
   },
   playButton: {
     position: "absolute",
-    marginTop: 435,
+    marginTop: screenHeight === 896 ? "120%" : "117%",
     alignSelf: "center",
     resizeMode: "contain",
   },
@@ -515,8 +584,31 @@ const styles = StyleSheet.create({
     position: "absolute",
     height:  40, 
     width: 40,
-    marginTop: 445,
+    marginTop: 490,
     marginLeft: 225,
     resizeMode: "contain",
   },
+
+
+  studyTimerInfoContainer: {
+    position: 'absolute',
+    flexDirection: 'row', // to have icon and text side by side
+    alignItems: 'center', // vertically center them
+    bottom: "26%", // distance from bottom
+    alignSelf: "center",
+   
+},
+studyTimerInfoIcon: {
+    height: 18,
+    width: 18,
+    marginRight: 0, // space between the icon and the text
+    alignSelf: "center",
+    marginBottom: "5.8%",
+},
+studyTimerInfo: {
+    fontSize: 18,
+    fontFamily: "GalanoGrotesque-Light",
+    color: "#5AC0EB",
+    alignSelf: "center"
+},
 });

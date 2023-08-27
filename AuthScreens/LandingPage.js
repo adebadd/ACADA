@@ -48,19 +48,19 @@ const LandingPage = ({ navigation }) => {
       />
       <View>
         <TextGradient style={styles.mainText}>ACADA</TextGradient>
-        <Text style={styles.subText}>Study Better With Friends</Text>
-        <Text style={styles.signupText}>Sign Up</Text>
-        <Text style={styles.signupsubText}>Sign up using email</Text>
+        <Text allowFontScaling={false} style={styles.subText}>Study Better With Friends</Text>
+        <Text allowFontScaling={false} style={styles.signupText}>Sign Up</Text>
+        <Text allowFontScaling={false} style={styles.signupsubText}>Sign up using email</Text>
 
         <TouchableOpacity activeOpacity={0.76} style={styles.signupButton} onPress={() => navigation.navigate(SignupPage)}>
-          <Text style={styles.signupButtonText}>Sign Up</Text>
+        <Text allowFontScaling={false} style={styles.signupButtonText}>Sign Up</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.signupsubText2}>Or signup with</Text>
+      <Text allowFontScaling={false} style={styles.signupsubText2}>Or signup with</Text>
       <View style={styles.footerText}>
-        <Text>Already have an account?</Text>
+      <Text allowFontScaling={false}>Already have an account?</Text>
         <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate(LoginPage)}>
-          <Text style={styles.highlightedText} > Login</Text>
+        <Text allowFontScaling={false} style={styles.highlightedText} > Login</Text>
         </TouchableOpacity>
 
       </View>

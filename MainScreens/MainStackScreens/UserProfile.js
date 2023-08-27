@@ -16,8 +16,9 @@ import { Switch } from 'react-native';
 import { Permission } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import PushNotifications from '../MainAssetCode/PushNotifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { firebase } from '../../config';
+import { getAuth, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
+import { getFirestore, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const UserProfile = ({ navigation}) => {
   const [name, setName] = useState([]);
@@ -25,11 +26,15 @@ const UserProfile = ({ navigation}) => {
   const [socialNotificationsEnabled, setSocialNotificationsEnabled] = useState(true);
   const [confirmLogoutModalVisible, setConfirmLogoutModalVisible] = useState(false);
 
+  const auth = getAuth();
+  const firestore = getFirestore();
+  const storage = getStorage();
+  
   const toggleNotifications = (value) => {
     setNotificationsEnabled(value);
-    const currentUser = firebase.auth().currentUser;
+    const currentUser = auth.currentUser;
     if (currentUser) {
-      firebase.firestore().collection("users").doc(currentUser.uid).update({
+      updateDoc(doc(firestore, "users", currentUser.uid), {
         notificationsEnabled: value,
       });
       PushNotifications(value); // again to reschedule the notifications
@@ -37,33 +42,27 @@ const UserProfile = ({ navigation}) => {
   };
 
   useEffect(() => {
-    const currentUser = firebase.auth().currentUser;
+    const currentUser = auth.currentUser;
     if (!currentUser) return; // If no user is signed in, just return
-    firebase.firestore().collection("users").doc(currentUser.uid).get()
-      .then((doc) => {
-        if (doc.exists) {
-          setNotificationsEnabled(doc.data().notificationsEnabled);
-        } else {
-          console.log("No such document!");
-        }
-      }).catch((error) => {
-        console.log("Error getting document:", error);
-      });
+    onSnapshot(doc(firestore, "users", currentUser.uid), (doc) => {
+      if (doc.exists()) {
+        setNotificationsEnabled(doc.data().notificationsEnabled);
+      } else {
+        console.log("No such document!");
+      }
+    });
   }, []);
 
   const handleSignOut = async () => {
     try {
-      const currentUser = firebase.auth().currentUser;
+      const currentUser = auth.currentUser;
   
       if (!currentUser) {
         console.error("No user is currently signed in");
         return;
       }
   
-      // Clear user data from AsyncStorage
-      await AsyncStorage.removeItem('userData');
-  
-      await firebase.auth().signOut();
+      await signOut(auth);
       console.log("User signed out successfully");
   
       // Add this line to navigate to the Signup screen
@@ -73,21 +72,22 @@ const UserProfile = ({ navigation}) => {
     }
   };
 
-
   useEffect(() => {
     const fetchProfileImage = async () => {
-      const currentUser = firebase.auth().currentUser;
+      const currentUser = auth.currentUser;
       if (!currentUser) return;  // If no user is signed in, just return
-      const storagePath = `users/${currentUser.uid}/profileImage`;
-      const ref = firebase.storage().ref().child(storagePath);
+      const storagePath = `users/${auth.currentUser.uid}/profileImage`;
+      const storageRef = ref(storage, storagePath);
       try {
-        const url = await ref.getDownloadURL();
+        const url = await getDownloadURL(storageRef);
         setProfileImage(url);
       } catch (error) {
+        console.error("Error fetching profile image:", error);
       }
     };
     fetchProfileImage();
   }, []);
+  
 
   const [profileImage, setProfileImage] = useState(null);
 
@@ -111,45 +111,40 @@ const UserProfile = ({ navigation}) => {
       aspect: [4, 3],
       quality: 1,
     });
-
+  
     if (!result.canceled) {
       const selectedAsset = result.assets[0];
+      
       // Replace the URL below with your Firebase storage path
-      const storagePath = `users/${firebase.auth().currentUser.uid}/profileImage`;
-
+      const storagePath = `users/${auth.currentUser.uid}/profileImage`; // Updated this line
+  
       // Upload the image to Firebase Storage and update the state
       console.log("Uploading image with URI:", selectedAsset.uri);
       uploadImage(selectedAsset.uri, storagePath)
         .then((url) => {
           setProfileImage(url);
-
-
-
           // Call the callback function to update the profile image in the Dashboard component
           route.params?.onProfileImageChanged?.(url);
         })
         .catch((error) => {
           console.log(error);
         });
-    } else {
     }
   };
 
   useEffect(() => {
-    const currentUser = firebase.auth().currentUser;
+    const currentUser = auth.currentUser;  // Using the auth instance from getAuth()
     if (!currentUser) return; // If no user is signed in, just return
-    const unsubscribe = firebase
-      .firestore()
-      .collection("users")
-      .doc(currentUser.uid)
-      .onSnapshot((snapshot) => {
-        if (snapshot.exists) {
-          setName(snapshot.data().firstName);
-        } else {
-          console.log("User does not exist");
-        }
-      });
-
+    
+    const userDocRef = doc(firestore, "users", currentUser.uid);
+    const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setName(snapshot.data().firstName);
+      } else {
+        console.log("User does not exist");
+      }
+    });
+  
     return () => unsubscribe(); // Unsubscribe on cleanup
   }, []);
 
@@ -161,21 +156,17 @@ const UserProfile = ({ navigation}) => {
       console.log("Uploading image with URI:", uri);
       const response = await fetch(uri);
       const blob = await response.blob();
-      const ref = firebase.storage().ref().child(storagePath);
-
+      const storageRef = ref(storage, storagePath);
+  
       console.log("Uploading blob to Firebase Storage:", storagePath);
-      await ref.put(blob);
-      const url = await ref.getDownloadURL();
-
-      const currentUser = firebase.auth().currentUser;
+      await uploadBytesResumable(storageRef, blob);
+      const url = await getDownloadURL(storageRef);
+  
+      const currentUser = auth.currentUser;
       if (!currentUser) return; // If no user is signed in, just return
       // Update the profile image in the Firestore database
-      await firebase
-        .firestore()
-        .collection("users")
-        .doc(currentUser.uid)
-        .update({ profileImageUrl: url });
-
+      await updateDoc(doc(firestore, "users", currentUser.uid), { profileImageUrl: url });
+  
       return url;
     } catch (error) {
       console.error("Error in uploadImage function:", error);
@@ -224,13 +215,13 @@ const UserProfile = ({ navigation}) => {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.greetingsText}>Hello, {name}</Text>
+        <Text allowFontScaling={false} style={styles.greetingsText}>Hello, {name}</Text>
       </View>
       <ScrollView style={styles.scrollViewContent}>
-        <Text style={[styles.Title, { marginTop: 280 }]}>Account</Text>
+      <Text allowFontScaling={false} style={[styles.Title, { marginTop: 280 }]}>Account</Text>
         <View style={styles.separator} />
         <TouchableOpacity style={[styles.longtouchable, { marginTop: 25 }]}>
-          <Text style={styles.touchabletext}>Edit Profile</Text>
+        <Text allowFontScaling={false} style={styles.touchabletext}>Edit Profile</Text>
           <Image
             style={styles.openIcon}
             source={require("../../assets/AppIcons/openicon.png")}
@@ -238,18 +229,18 @@ const UserProfile = ({ navigation}) => {
         </TouchableOpacity>
 
 
-        <TouchableOpacity style={[styles.longtouchable]}><Text style={styles.touchabletext}>Change Password</Text>
+        <TouchableOpacity style={[styles.longtouchable]}><Text allowFontScaling={false} style={styles.touchabletext}>Change Password</Text>
           <Image
             style={styles.openIcon}
             source={require("../../assets/AppIcons/openicon.png")}
           /></TouchableOpacity>
-        <TouchableOpacity style={[styles.longtouchable]}><Text style={styles.touchabletext}>Delete Account</Text>
+        <TouchableOpacity style={[styles.longtouchable]}><Text allowFontScaling={false} style={styles.touchabletext}>Delete Account</Text>
           <Image
             style={styles.openIcon}
             source={require("../../assets/AppIcons/openicon.png")}
           /></TouchableOpacity>
 
-        <Text style={[styles.Title, { marginTop: -5, }]}>Notifications</Text>
+<Text allowFontScaling={false} style={[styles.Title, { marginTop: -5, }]}>Notifications</Text>
 
 
         <TouchableOpacity></TouchableOpacity>
@@ -270,7 +261,7 @@ const UserProfile = ({ navigation}) => {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity activeOpacity={1} style={[styles.longtouchable,]}><Text style={styles.touchabletext}>Social Notifications</Text>
+        <TouchableOpacity activeOpacity={1} style={[styles.longtouchable,]}><Text allowFontScaling={false} style={styles.touchabletext}>Social Notifications</Text>
           <Switch
             trackColor={{ false: "#0089C2", true: "#5AC0EB" }}
             thumbColor={socialNotificationsEnabled ? "#FFFFFF" : "#f4f3f4"}
@@ -289,7 +280,7 @@ const UserProfile = ({ navigation}) => {
 
 
 
-        <Text style={[styles.Title, { marginTop: -5, }]}>Theme</Text>
+        <Text allowFontScaling={false} style={[styles.Title, { marginTop: -5, }]}>Theme</Text>
         <View style={styles.separator} />
 
         <View style={styles.themeview}>
@@ -325,7 +316,7 @@ const UserProfile = ({ navigation}) => {
             style={styles.signoutIcon}
             source={require("../../assets/AppIcons/signout.png")}
           />
-          <Text style={styles.logoutButtonText}>Sign out</Text>
+          <Text allowFontScaling={false} style={styles.logoutButtonText}>Sign out</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -337,7 +328,7 @@ const UserProfile = ({ navigation}) => {
         <View style={styles.overlay}>
           <View style={styles.modalWrapper}>
             <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Are you sure you{'\n'} want to sign out?</Text>
+            <Text allowFontScaling={false} style={styles.modalTitle}>Are you sure you{'\n'} want to sign out?</Text>
 
               <TouchableOpacity
                 style={styles.modalButton}
@@ -345,7 +336,7 @@ const UserProfile = ({ navigation}) => {
                 activeOpacity={0.9}
               >
 
-                <Text style={styles.modalButtonText}>Sign Out</Text>
+<Text allowFontScaling={false} style={styles.modalButtonText}>Sign Out</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.closeButton}
@@ -409,8 +400,8 @@ const styles = StyleSheet.create({
   modalWrapper: {
     backgroundColor: 'white',
     borderRadius: 28,
-    width: 300,
-    height: 130,
+    width: 320,
+    height: 160,
     position: 'absolute', // Position it absolutely
     top: '50%', // Center it vertically
     left: '50%', // Center it horizontally
@@ -434,10 +425,10 @@ const styles = StyleSheet.create({
 
   modalTitle: {
     fontSize: 20,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "#0089C2",
-    marginTop: 24,
+    marginTop: 36,
   },
   modalButton: {
     backgroundColor: "#5AC0EB",
@@ -449,7 +440,7 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     fontSize: 18,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-Light",
     textAlign: "center",
     marginTop: 12,
     color: "white",
@@ -555,7 +546,7 @@ const styles = StyleSheet.create({
 
   greetingsText: {
     fontSize: 30,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-SemiBold",
     textAlign: "center",
     color: 'white',
     marginTop: 15

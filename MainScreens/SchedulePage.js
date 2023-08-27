@@ -20,9 +20,32 @@ import GenerateDates from "./MainAssetCode/GenerateDates";
 import { memo } from "react";
 import Swiper from "react-native-deck-swiper";
 import Modal from "react-native-modal";
-
+import {
+  getFirestore,
+  doc,
+  getDocs,
+  collection,
+  query,
+  where,
+  orderBy,
+  Timestamp,
+  onSnapshot,
+  updateDoc
+} from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+const db = getFirestore();
+  const auth = getAuth();
 const itemWidth = Dimensions.get("window").width / 5;
-const SchedulePage = ({route}) => {
+const screenWidth = Dimensions.get('window').width;
+
+const getAddTaskWidth = () => {
+  if (screenWidth === 414 ) return 270;
+  if (screenWidth === 375) return 230;
+  if (screenWidth === 430 || 428) return 270;
+  return 410;  // default value
+}
+
+const SchedulePage = ({ route }) => {
   const [tasks, setTasks] = useState([]);
   const navigation = useNavigation();
   const [selectedDate, setSelectedDate] = useState(moment().format("YYYY-MM-DD"));
@@ -33,24 +56,25 @@ const SchedulePage = ({route}) => {
 
 
   useEffect(() => {
+    
     if (!initialScrollDone) {
       flatListRef.current.scrollToIndex({
         index: selectedIndex,
         animated: true,
-     });
-        setInitialScrollDone(true);
+      });
+      setInitialScrollDone(true);
     }
-}, []);
+  }, []);
 
-useEffect(() => {
+  useEffect(() => {
     if (route.params?.selectedTaskDate) {
-        const dateString = moment(route.params.selectedTaskDate).format("YYYY-MM-DD");
-        handleDatePress(dateString); // Scroll to the selected date
+      const dateString = moment(route.params.selectedTaskDate).format("YYYY-MM-DD");
+      handleDatePress(dateString); // Scroll to the selected date
     }
-}, [route.params?.selectedTaskDate]);
+  }, [route.params?.selectedTaskDate]);
 
   const { selectedTaskDate } = route.params || {};
-const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || new Date());
+  const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || new Date());
 
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -59,7 +83,7 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
 
   const selectedIndex = GenerateDates().findIndex(
     (item) => item && item.dateString === moment(currentViewedDate).format("YYYY-MM-DD")
-);
+  );
 
 
   useEffect(() => {
@@ -74,7 +98,7 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
     setModalVisible(true);
   };
 
-  
+
 
   const handleDatePress = (dateString) => {
     setSelectedDate(dateString);
@@ -107,10 +131,10 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
 
   const splitText = (text, maxCharPerLine) => {
     if (!text) return [];
-  
+
     const lines = [];
     let lineStart = 0;
-  
+
     for (let i = 0; i < text.length; i++) {
       if (i - lineStart >= maxCharPerLine && text[i] === ' ') {
         lines.push(text.substring(lineStart, i));
@@ -119,7 +143,7 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
         lines.push(text.substring(lineStart, i + 1));
       }
     }
-  
+
     return lines;
   };
 
@@ -128,8 +152,8 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
 
       <TouchableOpacity onPress={() => handleDatePress(item.dateString)} activeOpacity={0.5}>
         <View style={styles.dateItem}>
-        <Text allowFontScaling={false} style={[styles.day, isSelected && styles.selectedText]}>{item.day}</Text>
-        <Text allowFontScaling={false} style={[styles.dateNumber, isSelected && styles.selectedText]}>{item.date}</Text>
+          <Text allowFontScaling={false} style={[styles.day, isSelected && styles.selectedText]}>{item.day}</Text>
+          <Text allowFontScaling={false} style={[styles.dateNumber, isSelected && styles.selectedText]}>{item.date}</Text>
           {isSelected && <View style={styles.selectedIndicator} />}
 
         </View>
@@ -139,11 +163,11 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
 
   const renderItem = ({ item }) => {
     if (item && item.dateString) {
-        const isSelected = item.dateString === selectedDate;
-        return <DateItem item={item} isSelected={isSelected} handleDatePress={handleDatePress} />;
+      const isSelected = item.dateString === selectedDate;
+      return <DateItem item={item} isSelected={isSelected} handleDatePress={handleDatePress} />;
     }
     return null; // or some default component
-};
+  };
 
   useEffect(() => {
     flatListRef.current.scrollToIndex({
@@ -154,44 +178,45 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
 
   const fetchTasks = (date) => {
     try {
-      const userId = firebase.auth().currentUser.uid;
+      const userId = auth.currentUser.uid;
       const selectedDate = moment(date).toDate();
       const startOfDay = new Date(selectedDate);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(selectedDate);
       endOfDay.setHours(23, 59, 59, 999);
       const selectedDayOfWeek = moment(date).isoWeekday();
-
-      const unsubscribe = firebase
-      .firestore()
-      .collection("users")
-      .doc(userId)
-      .collection("tasks")
-      .orderBy("date")
-      .orderBy("time")
-      .onSnapshot((querySnapshot) =>  {
-          const fetchedTasks = querySnapshot.docs
+  
+      const q = query(
+        collection(db, "users", userId, "tasks"),
+        where("isCompleted", "==", false),
+        orderBy("icon"),
+        orderBy("date"),
+        orderBy("time")
+        // ... other conditions if needed
+      );
+  
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const fetchedTasks = querySnapshot.docs
           .map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }))
-          .filter(
-            (task) =>
-              ((task.date.toDate() >= startOfDay &&
-                task.date.toDate() <= endOfDay &&
-                !task.repeat) ||
-              (task.repeat &&
-                moment(task.date.toDate()).isoWeekday() === selectedDayOfWeek)) &&
-              task.isCompleted === false &&
-              task.icon != null && // Exclude tasks without icon
-              task.color != null  // Exclude tasks without color
-          );
-    
-          setTasks(fetchedTasks);
-        });
-
-      // Return the unsubscribe function to clean up the listener when the component is unmounted
-      return unsubscribe;
+          .filter((task) => {
+            const taskDate = task.date.toDate();
+            return (
+              (taskDate >= startOfDay && taskDate <= endOfDay && !task.repeat) ||
+              (task.repeat && moment(taskDate).isoWeekday() === selectedDayOfWeek) &&
+              task.icon !== null &&  // Moved these checks to the client side
+              task.color !== null
+            );
+          });
+  
+        setTasks(fetchedTasks);
+      });
+  
+      return () => {
+        unsubscribe();  // Ensure we're calling it as a function
+      };
     } catch (error) {
       console.error(error);
     }
@@ -237,15 +262,15 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
           ]}
           resizeMode="contain"
         />
-        <View style = {styles.taskitemtext}>
-        <Text allowFontScaling={false} style={styles.taskSubject}>{item.subjectTitle}</Text>
-        <Text allowFontScaling={false} style={styles.taskCategory}>{item.category}</Text>
-          <View style={[styles.taskTopic, {flexShrink: 1}, {width : 210}]}>
-          {item.topic && splitText(item.topic, 30).map((line, index) => (
-    <Text allowFontScaling={false} key={index} style={styles.taskTopicLine}>
-        {line}
-    </Text>
-))}
+        <View style={styles.taskitemtext}>
+          <Text allowFontScaling={false} style={styles.taskSubject}>{item.subjectTitle}</Text>
+          <Text allowFontScaling={false} style={styles.taskCategory}>{item.category}</Text>
+          <View style={[styles.taskTopic, { flexShrink: 1 }, { width: 210 }]}>
+            {item.topic && splitText(item.topic, 30).map((line, index) => (
+              <Text allowFontScaling={false} key={index} style={styles.taskTopicLine}>
+                {line}
+              </Text>
+            ))}
           </View>
           <Text allowFontScaling={false}
             style={[
@@ -254,25 +279,22 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
               isSubjectTopic && styles.taskTimeMarginTop2, // Apply the marginTop style conditionally
             ]}
           >
-         {moment(item.time, "HH:mm").format("hh:mm A")}
+       {moment(item.time, "HH:mm").format("HH:mm A")}
           </Text>
         </View>
       </TouchableOpacity>
     );
-});
+  });
 
   const markTaskAsComplete = async () => {
     if (selectedTask) {
       try {
-        const userId = firebase.auth().currentUser.uid;
-        await firebase
-          .firestore()
-          .collection("users")
-          .doc(userId)
-          .collection("tasks")
-          .doc(selectedTask.id)
-          .update({ isCompleted: true, completedAt: firebase.firestore.Timestamp.now() });
-  
+        const userId = auth.currentUser.uid;
+        await updateDoc(doc(db, "users", userId, "tasks", selectedTask.id), {
+          isCompleted: true,
+          completedAt: Timestamp.now()
+        });
+
         setModalVisible(false);
       } catch (error) {
         console.error(error);
@@ -280,12 +302,13 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
     }
   };
 
+
   useEffect(() => {
     if (route.params?.selectedTaskDate) {
-        const dateString = moment(route.params.selectedTaskDate).format("YYYY-MM-DD");
-        handleDatePress(dateString); // Scroll to the selected date
+      const dateString = moment(route.params.selectedTaskDate).format("YYYY-MM-DD");
+      handleDatePress(dateString); // Scroll to the selected date
     }
-}, [route.params?.selectedTaskDate]);
+  }, [route.params?.selectedTaskDate]);
 
 
   const MemoizedTaskItem = React.memo(TaskItem);
@@ -314,28 +337,28 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
     const newDate = GenerateDates()[index];
     if (newDate && newDate.dateString) {
       setSelectedDate(newDate.dateString); // Add this line to update the selectedDate
-    // Instead of setting the selected date here, simply update the current month and day title.
-    setCurrentMonth(moment(newDate.dateString).format("MMMM YYYY"));
-    const diff = moment(newDate.dateString).startOf('day').diff(moment().startOf('day'), "days");
-    let title;
-    if (diff === 0) {
-      title = "Today";
-    } else if (diff === -1) {
-      title = "Yesterday";
-    } else if (diff === 1) {
-      title = "Tomorrow";
-    } else if (diff < -1) {
-      title = `${Math.abs(diff)} days ago`;
-    } else {
-      title = `In ${Math.abs(diff)} days`;
+      // Instead of setting the selected date here, simply update the current month and day title.
+      setCurrentMonth(moment(newDate.dateString).format("MMMM YYYY"));
+      const diff = moment(newDate.dateString).startOf('day').diff(moment().startOf('day'), "days");
+      let title;
+      if (diff === 0) {
+        title = "Today";
+      } else if (diff === -1) {
+        title = "Yesterday";
+      } else if (diff === 1) {
+        title = "Tomorrow";
+      } else if (diff < -1) {
+        title = `${Math.abs(diff)} days ago`;
+      } else {
+        title = `In ${Math.abs(diff)} days`;
+      }
+      setDaysAgo(title);
     }
-    setDaysAgo(title);
-  }
   };
   return (
     <View style={styles.maincontainer}>
       <View style={styles.topbar}>
-      <Text allowFontScaling={false} style={styles.date}>
+        <Text allowFontScaling={false} style={styles.date}>
           <CurrentDate />
         </Text>
         <Text allowFontScaling={false} style={styles.h1}>{daysAgo}</Text>
@@ -386,35 +409,35 @@ const [currentViewedDate, setCurrentViewedDate] = useState(selectedTaskDate || n
         showsVerticalScrollIndicator={false}
       />
 
-<Modal
-  isVisible={modalVisible}
-  onBackdropPress={() => setModalVisible(false)}
-  animationIn="fadeIn"
-  animationOut="fadeOut"
-        
-  useNativeDriver={true}
->
-  <View style={styles.modalWrapper}>
-    <View style={styles.modalContainer}>
-      <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)} activeOpacity={0.9}>
-      </TouchableOpacity>
-      <Text allowFontScaling={false} style={styles.modalTitle}>Would you like to mark this{"\n"} task as complete?</Text>
-      <TouchableOpacity style={styles.modalButton} onPress={markTaskAsComplete} activeOpacity={0.9}>
-      <Text allowFontScaling={false} style={styles.modalButtonText}>Complete Task</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-      style={styles.closeButton}
-      onPress={() => setModalVisible(false)}
-      activeOpacity={0.9}
-    >
-      <Image
-        source={require('../assets/AppIcons/exiticon.png')}
-        style={styles.closeImage}
-      />
-    </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
+      <Modal
+        isVisible={modalVisible}
+        onBackdropPress={() => setModalVisible(false)}
+        animationIn="fadeIn"
+        animationOut="fadeOut"
+
+        useNativeDriver={true}
+      >
+        <View style={styles.modalWrapper}>
+          <View style={styles.modalContainer}>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)} activeOpacity={0.9}>
+            </TouchableOpacity>
+            <Text allowFontScaling={false} style={styles.modalTitle}>Would you like to mark this{"\n"} task as complete?</Text>
+            <TouchableOpacity style={styles.modalButton} onPress={markTaskAsComplete} activeOpacity={0.9}>
+              <Text allowFontScaling={false} style={styles.modalButtonText}>Complete Task</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+              activeOpacity={0.9}
+            >
+              <Image
+                source={require('../assets/AppIcons/exiticon.png')}
+                style={styles.closeImage}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -457,10 +480,10 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     backgroundColor: "#5AC0EB",
-  alignSelf: "center",
-  borderRadius: 16,
-  width: 200,
-  height: 40,
+    alignSelf: "center",
+    borderRadius: 16,
+    width: 200,
+    height: 40,
     marginTop: 16
   },
   modalButtonText: {
@@ -486,7 +509,7 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 20,
-    fontFamily: "GalanoGrotesque-SemiBold",
+    fontFamily: "GalanoGrotesque-Medium",
     textAlign: "left",
     color: "#5AC0EB",
     marginLeft: 18,
@@ -498,7 +521,7 @@ const styles = StyleSheet.create({
   monthText: {
     fontSize: 20,
     marginLeft: 18,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-SemiBold",
     textAlign: "left",
     color: "#5AC0EB",
     marginTop: -55,
@@ -517,26 +540,27 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   addtask: {
-    fontSize: 18.5,
-    fontFamily: "GalanoGrotesque-SemiBold",
+    fontSize: 18,
+    fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "white",
-    marginTop: 7.5,
+    marginTop: 9,
   },
   task: {
-    marginTop: 94,
+    marginTop: 91,
     backgroundColor: "#5AC0EB",
-    marginLeft: 226,
-    height: 30,
-    width: 130,
+    left: getAddTaskWidth(),
+    width: 120,
+    height: 35,
     borderRadius: 10,
     marginBottom: 200,
+    borderRadius: 10,
     position: "absolute",
   },
 
   flatList: {
     marginTop: -0,
-  marginBottom: -15,
+    marginBottom: -15,
   },
   dateList: {
     paddingHorizontal: Dimensions.get("window").width / 10,
@@ -550,7 +574,7 @@ const styles = StyleSheet.create({
   },
   dateNumber: {
     fontSize: 24,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-SemiBold",
     color: "#0089C2",
   },
   editicon: {
@@ -611,7 +635,7 @@ const styles = StyleSheet.create({
   taskSubject: {
 
     fontSize: 26,
-    fontFamily: "GalanoGrotesque-Light",
+    fontFamily: "GalanoGrotesque-Medium",
     color: "white",
     marginTop: 33,
     marginLeft: 25,
@@ -619,7 +643,7 @@ const styles = StyleSheet.create({
   },
   taskCategory: {
     fontSize: 24,
-    fontFamily: "GalanoGrotesque-Medium",
+    fontFamily: "GalanoGrotesque-Light",
     color: "white",
     marginLeft: 25,
     marginTop: -5,

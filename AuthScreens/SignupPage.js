@@ -21,17 +21,35 @@ import { firebase } from "../config";
 import { Video } from 'expo-av';
 import videoFile from '../assets/AnimatedGradient.mp4';
 import { Dimensions } from 'react-native';
+import app from "../config";
+import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { getFirestore, collection, doc, setDoc } from "firebase/firestore";
 
 
 
 const SignupPage = ({ navigation }) => {
 
+
+    const auth = getAuth(app);
+  const firestore = getFirestore(app);
+
+
     const windowHeight = Dimensions.get('window').height;
     const windowWidth = Dimensions.get('window').width; // Get the window width
-    const signupButtonMargin = windowHeight >= 926 ? 260 : 190; // Adjust the values as needed
-    const passwordToggleMarginLeft = windowWidth >= 428 ? 316 : 305; // Adjust the values as needed
+    const getSignupButtonMargin = () => {
+        if (windowHeight >= 926) return 260;
+        if (windowHeight == 812) return 120;
+        return 190;  // default value
+    }
+    
+    const getPasswordToggleMarginLeft = () => {
+        if (windowWidth >= 428) return 316;
+        if (windowWidth == 375) return 270;
+        return 305;  // default value
+    }
 
-
+    
+    
     const [password, setPassword] = useState("");
     const [email, setEmail] = useState("");
     const [username, setUsername] = useState("");
@@ -42,41 +60,37 @@ const SignupPage = ({ navigation }) => {
     };
 
 
-    signupUser = async (email, password, username) => {
+    const signupUser = async (email, password, username) => {
         try {
-            await firebase.auth().createUserWithEmailAndPassword(email, password)
-                .then(() => {
-                    firebase.auth().currentUser.sendEmailVerification({
-                        handleCodeInApp: true,
-                        url: 'https://acada-6ed2e.firebaseapp.com',
-                    })
-
-                        .then(() => {
-                            firebase.firestore().collection("users")
-                                .doc(firebase.auth().currentUser.uid)
-                                .set({
-                                    username,
-                                    email,
-                                    firstName,
-                                })
-                        })
-                });
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const user = userCredential.user;
+    
+          sendEmailVerification(user, {
+            handleCodeInApp: true,
+            url: 'https://acada-6ed2e.firebaseapp.com',
+          });
+    
+          await setDoc(doc(firestore, "users", user.uid), {
+            username,
+            email,
+            firstName,
+          });
         } catch (error) {
             switch (error.code) {
                 case 'auth/email-already-in-use':
-                    alert('This email is already in use. Please choose another email address.');
+                    Alert.alert('Signup Error', 'This email is already in use. Please choose another email address.');
                     break;
                 case 'auth/invalid-email':
-                    alert('Please enter a valid email address.');
+                    Alert.alert('Signup Error', 'Please enter a valid email address.');
                     break;
                 case 'auth/weak-password':
-                    alert('Password should be at least 6 characters long.');
+                    Alert.alert('Signup Error', 'Password should be at least 6 characters long.');
                     break;
                 case 'auth/network-request-failed':
-                    alert('Please check your internet connection and try again.');
+                    Alert.alert('Network Error', 'Please check your internet connection and try again.');
                     break;
                 default:
-                    alert('An error occurred during sign-up. Please try again later.');
+                    Alert.alert('Signup Error', 'An error occurred during sign-up. Please try again later.');
                     break;
             }
         }
@@ -164,7 +178,7 @@ const SignupPage = ({ navigation }) => {
                             />
                         </View>
 
-                        <View style={[styles.passwordToggleContainer, { marginLeft: passwordToggleMarginLeft }]}>
+                        <View style={[styles.passwordToggleContainer, { marginLeft: getPasswordToggleMarginLeft() }]}>
                             <TouchableOpacity activeOpacity={1} onPress={toggleShowPassword}>
                                 <Image
                                     source={
@@ -182,7 +196,7 @@ const SignupPage = ({ navigation }) => {
             <TouchableOpacity
                 onPress={() => signupUser(email, password, username)}
                 activeOpacity={0.76}
-                style={[styles.loginButton, { marginBottom: signupButtonMargin }]}
+                style={[styles.loginButton, { marginBottom: getSignupButtonMargin() }]}
             >
                 <Text style={styles.loginButtonText}>Sign up</Text>
             </TouchableOpacity>
