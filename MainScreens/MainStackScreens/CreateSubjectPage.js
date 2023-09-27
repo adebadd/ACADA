@@ -1100,7 +1100,7 @@ const styles = StyleSheet.create({
   },
   helloText: {
     fontSize: 22,
-    fontFamily: "GalanoGrotesque-SemiBold",
+    fontFamily: "GalanoGrotesque-Medium",
     textAlign: "left",
     color: "#5AC0EB",
     marginLeft: 18,

@@ -22,15 +22,13 @@ import StudyTimerPage from './MainScreens/StudyTimerPage';
 import SchedulePage from './MainScreens/SchedulePage';
 import PushNotifications from './MainScreens/MainAssetCode/PushNotifications';
 import SocialPage from './MainScreens/SocialPage';
-import StudyStatsPage from './MainScreens/MainStackScreens/StudyStatsPage';
+import StudyStatsPage from './MainScreens/StudyStatsPage';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 // Firebase new modular imports
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import app from './config';  // Assuming this is where you initialized your Firebase app
-import StudyTabs from './TabbarNavigation/StudyTabs';
-
 
 import { useCallback } from 'react';
 

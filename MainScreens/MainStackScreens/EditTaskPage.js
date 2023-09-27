@@ -27,8 +27,16 @@ import { useCurrentTime } from "../MainAssetCode/CurrentTime";
 import { onSnapshot, addDoc, collection, getDocs, orderBy, query, where, getFirestore, updateDoc, doc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { Dimensions } from "react-native";
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from "react-native-responsive-screen";
+
+
+
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
+
 const EditTaskPage = ({ navigation, route }) => {
   const { task } = route.params;
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
@@ -62,37 +70,37 @@ const EditTaskPage = ({ navigation, route }) => {
 
   const closeModal = () => {
     setUpdateModalVisible(false);
-  };  
+  };
 
   const handleModalButtonAction = () => {
     setModalVisible(false);
   };
-  
+
 
 
   const [updateAction, setUpdateAction] = useState(null);
 
 
   const handleColorPress = (color) => {
-      setSelectedColor(color);
+    setSelectedColor(color);
   };
 
 
-  
+
   const [alertVisible, setAlertVisible] = useState(false);
-    const handleOk = () => {
-      // Handle OK button press
-      setAlertVisible(false);
-    };
-    const handleCancel = () => {
-      // Handle Cancel button press
-      setAlertVisible(false);
-    };
+  const handleOk = () => {
+    // Handle OK button press
+    setAlertVisible(false);
+  };
+  const handleCancel = () => {
+    // Handle Cancel button press
+    setAlertVisible(false);
+  };
 
 
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
-    const [deleteAction, setDeleteAction] = useState(null);
-    
+  const [deleteAction, setDeleteAction] = useState(null);
+
 
   const handleSubjectChange = (subject) => {
     setSelectedSubject(subject.value);
@@ -164,57 +172,57 @@ const EditTaskPage = ({ navigation, route }) => {
         const auth = getAuth();
         const userId = auth.currentUser.uid;
         const firestore = getFirestore();
-  
+
         await deleteDoc(doc(firestore, 'users', userId, 'tasks', taskId));
         console.log("Task deleted!");
-  
+
         // Navigate back
         navigation.goBack();
-  
+
       } catch (error) {
         console.error("Error deleting task: ", error);
       }
       setDeleteModalVisible(false);
     });
   };
-  
+
   useEffect(() => {
     const auth = getAuth();
     const userId = auth.currentUser.uid;
-  
+
     const firestore = getFirestore();
-  
+
     const q = query(
       collection(firestore, "users", userId, "subjects"),
       orderBy("createdAt", "desc")
     );
-  
+
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const subjects = [];
-        querySnapshot.docChanges().forEach((change) => {
-          if (change.type === "modified") {
-            const subject = change.doc.data();
-            updateTaskSubjectDetails(
-              change.doc.id,
-              subject.icon,
-              subject.subjectcolor
-            );
-          }
-        });
-        querySnapshot.forEach((doc) => {
-          const subject = doc.data();
-          subject.id = doc.id;
-          subjects.push(subject);
-        });
-        setSubjects(subjects);
-        setSelectedSubject(task.subjectTitle); // Set the selected subject
-        setSelectedCategory(task.category); // Set the selected category
-        setTopic(task.topic); // Set the task topic
-        setSelectedDate(task.date.toDate()); // Set the selected date
+      const subjects = [];
+      querySnapshot.docChanges().forEach((change) => {
+        if (change.type === "modified") {
+          const subject = change.doc.data();
+          updateTaskSubjectDetails(
+            change.doc.id,
+            subject.icon,
+            subject.subjectcolor
+          );
+        }
       });
+      querySnapshot.forEach((doc) => {
+        const subject = doc.data();
+        subject.id = doc.id;
+        subjects.push(subject);
+      });
+      setSubjects(subjects);
+      setSelectedSubject(task.subjectTitle); // Set the selected subject
+      setSelectedCategory(task.category); // Set the selected category
+      setTopic(task.topic); // Set the task topic
+      setSelectedDate(task.date.toDate()); // Set the selected date
+    });
     return unsubscribe;
-}, []);
-  
+  }, []);
+
   const updateTask = async (
     taskId,
     selectedSubject,
@@ -252,16 +260,16 @@ const EditTaskPage = ({ navigation, route }) => {
     }
 
 
-  
+
     const selectedSubjectData = subjects.find(
       (item) => item.title === selectedSubject
     );
-  
+
     const selectedSubjectIcon = selectedSubjectData.icon;
     const selectedSubjectColor = selectedSubjectData.subjectcolor;
     const auth = getAuth();
     const userId = auth.currentUser.uid;
-  
+
     // Update the task in Firebase
     try {
       const firestore = getFirestore();
@@ -282,7 +290,7 @@ const EditTaskPage = ({ navigation, route }) => {
       console.error("Error updating task: ", error);
     }
   };
-  
+
 
   return (
     <View style={styles.container}>
@@ -301,159 +309,159 @@ const EditTaskPage = ({ navigation, route }) => {
 
       <Text allowFontScaling={false} style={styles.header}>Edit {task.subjectTitle} {"\n"}Task Details</Text>
       <Text allowFontScaling={false} style={styles.header2}>Category</Text>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.horizontalScrollView}
-      >
-
-
-        <TouchableOpacity
-          style={styles.task}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (selectedCategory === "Class") {
-              setSelectedCategory("");
-            } else {
-              setSelectedCategory("Class");
-            }
-          }}
-        >
-          <Text allowFontScaling={false} style={styles.tasklabel}>Class</Text>
-        </TouchableOpacity>
-        {selectedCategory === "Class" && (
-          <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 85, marginTop: -2, position: "absolute" }]} />
-        )}
-
-
-        <TouchableOpacity
-          style={styles.task2}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (selectedCategory === "Exam") {
-              setSelectedCategory("");
-            } else {
-              setSelectedCategory("Exam");
-            }
-          }}
-        >
-          <Text allowFontScaling={false} style={styles.tasklabel}>Exam</Text>
-        </TouchableOpacity>
-
-        {selectedCategory === "Exam" && (
-          <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 202, marginTop: -2, position: "absolute" }]} />
-        )}
-
-        <TouchableOpacity
-          style={styles.task3}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (selectedCategory === "Lab") {
-              setSelectedCategory("");
-            } else {
-              setSelectedCategory("Lab");
-            }
-          }}
-        >
-          <Text allowFontScaling={false} style={styles.tasklabel}>Lab</Text>
-        </TouchableOpacity>
-        {selectedCategory === "Lab" && (
-          <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 317, marginTop: -2, position: "absolute" }]} />
-        )}
-
-        <TouchableOpacity
-          style={[styles.task3, { marginRight: 20 }]}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (selectedCategory === "Study") {
-              setSelectedCategory("");
-            } else {
-              setSelectedCategory("Study");
-            }
-          }}
-        >
-          <Text allowFontScaling={false} style={styles.tasklabel}>Study</Text>
-        </TouchableOpacity>
-        {selectedCategory === "Study" && (
-          <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 432, marginTop: -2, position: "absolute" }]} />
-        )}
-
-      </ScrollView>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.horizontalScrollView2}
-      >
-
-
-        <TouchableOpacity
-          style={styles.task4}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (selectedCategory === "Assignment") {
-              setSelectedCategory("");
-            } else {
-              setSelectedCategory("Assignment");
-            }
-
-
-          }}
-
-
+      <View style={styles.categoryContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalScrollView}
         >
 
-<Text allowFontScaling={false} style={styles.tasklabel}>Assignment</Text>
 
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.task}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedCategory === "Class") {
+                setSelectedCategory("");
+              } else {
+                setSelectedCategory("Class");
+              }
+            }}
+          >
+            <Text allowFontScaling={false} style={styles.tasklabel}>Class</Text>
+          </TouchableOpacity>
+          {selectedCategory === "Class" && (
+            <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 85, marginTop: -2, position: "absolute" }]} />
+          )}
 
-        <TouchableOpacity
-          style={styles.task5}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (selectedCategory === "Presentation") {
-              setSelectedCategory("");
-            } else {
-              setSelectedCategory("Presentation");
-            }
-          }}
+
+          <TouchableOpacity
+            style={styles.task2}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedCategory === "Exam") {
+                setSelectedCategory("");
+              } else {
+                setSelectedCategory("Exam");
+              }
+            }}
+          >
+            <Text allowFontScaling={false} style={styles.tasklabel}>Exam</Text>
+          </TouchableOpacity>
+
+          {selectedCategory === "Exam" && (
+            <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 202, marginTop: -2, position: "absolute" }]} />
+          )}
+
+          <TouchableOpacity
+            style={styles.task3}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedCategory === "Lab") {
+                setSelectedCategory("");
+              } else {
+                setSelectedCategory("Lab");
+              }
+            }}
+          >
+            <Text allowFontScaling={false} style={styles.tasklabel}>Lab</Text>
+          </TouchableOpacity>
+          {selectedCategory === "Lab" && (
+            <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 317, marginTop: -2, position: "absolute" }]} />
+          )}
+
+          <TouchableOpacity
+            style={[styles.task3, { marginRight: 20 }]}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedCategory === "Study") {
+                setSelectedCategory("");
+              } else {
+                setSelectedCategory("Study");
+              }
+            }}
+          >
+            <Text allowFontScaling={false} style={styles.tasklabel}>Study</Text>
+          </TouchableOpacity>
+          {selectedCategory === "Study" && (
+            <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 432, marginTop: -2, position: "absolute" }]} />
+          )}
+
+        </ScrollView>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalScrollView2}
         >
-          <Text allowFontScaling={false} style={styles.tasklabel}>Presentation</Text>
-        </TouchableOpacity>
-        {selectedCategory === "Presentation" && (
-          <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 300, marginTop: -3, position: "absolute" }]} />
-        )}
 
-        {selectedCategory === "Assignment" && (
-          <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 140, marginTop: -3, position: "absolute" }]} />
-        )}
-        <TouchableOpacity
-          style={styles.task5}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (selectedCategory === "Reminder") {
-              setSelectedCategory("");
-            } else {
-              setSelectedCategory("Reminder");
-            }
-          }}
-        >
-          <Text allowFontScaling={false} style={styles.tasklabel}>Reminder</Text>
 
-        </TouchableOpacity>
-        {selectedCategory === "Reminder" && (
-          <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 462, marginTop: -3, position: "absolute" }]} />
-        )}
-      </ScrollView>
+          <TouchableOpacity
+            style={styles.task4}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedCategory === "Assignment") {
+                setSelectedCategory("");
+              } else {
+                setSelectedCategory("Assignment");
+              }
 
+
+            }}
+
+
+          >
+
+            <Text allowFontScaling={false} style={styles.tasklabel}>Assignment</Text>
+
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.task5}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedCategory === "Presentation") {
+                setSelectedCategory("");
+              } else {
+                setSelectedCategory("Presentation");
+              }
+            }}
+          >
+            <Text allowFontScaling={false} style={styles.tasklabel}>Presentation</Text>
+          </TouchableOpacity>
+          {selectedCategory === "Presentation" && (
+            <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 300, marginTop: -3, position: "absolute" }]} />
+          )}
+
+          {selectedCategory === "Assignment" && (
+            <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 140, marginTop: -3, position: "absolute" }]} />
+          )}
+          <TouchableOpacity
+            style={styles.task5}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedCategory === "Reminder") {
+                setSelectedCategory("");
+              } else {
+                setSelectedCategory("Reminder");
+              }
+            }}
+          >
+            <Text allowFontScaling={false} style={styles.tasklabel}>Reminder</Text>
+
+          </TouchableOpacity>
+          {selectedCategory === "Reminder" && (
+            <Ionicons name="checkmark-circle" size={25} color="#0089C2" style={[styles.buttonstyle, { marginLeft: 462, marginTop: -3, position: "absolute" }]} />
+          )}
+        </ScrollView>
+      </View>
       <View style={styles.maincontainer}>
 
         <View style={[styles.textInputView]}>
           <View style={{ height: 50, width: 350 }}>
 
           </View>
-          <View style={{ zIndex: 3, position: "absolute", marginTop: 18, marginLeft: 1 }}>
+          <View style={{ zIndex: 3, marginTop: 18, marginLeft: 1 }}>
             <Image
               style={styles.subjectInputIcon1}
               source={require("../../assets/AppIcons/subjecticon.png")}
@@ -466,15 +474,14 @@ const EditTaskPage = ({ navigation, route }) => {
             dropDownContainerStyle={{
               opacity: 1,
               marginLeft: 18.5,
-              marginTop: 50,
-              width: 339,
+              marginTop: 0,
+              width: wp("92%"),
               borderBottomColor: "#5AC0EB",
               borderColor: "#0089C2",
               borderWidth: 1.8,
-              borderRadius: 0,
               zIndex: 10,
             }}
-       
+
             selectedItemLabelStyle={{
               fontFamily: "GalanoGrotesque-SemiBold",
               fontSize: 18,
@@ -491,9 +498,9 @@ const EditTaskPage = ({ navigation, route }) => {
               height: 62,
               zIndex: 2,
               width: 340,
-              marginTop: -20,
+              marginTop: 0,
               marginBottom: 35,
-              position: "absolute",
+
             }}
             listItemLabelStyle={{
               fontFamily: "GalanoGrotesque-SemiBold",
@@ -540,12 +547,12 @@ const EditTaskPage = ({ navigation, route }) => {
           />
 
           <View style={styles.adddelview}>
-          <TouchableOpacity
-  activeOpacity={0.76}
-  onPress={() => {
-    setUpdateModalVisible(true);
-  }}
->
+            <TouchableOpacity
+              activeOpacity={0.76}
+              onPress={() => {
+                setUpdateModalVisible(true);
+              }}
+            >
               <Image
                 style={styles.createIcon}
                 source={require("../../assets/AppIcons/checkicon.png")}
@@ -601,7 +608,11 @@ const EditTaskPage = ({ navigation, route }) => {
             }}
             blurOnSubmit={false}
           />
-
+          <TouchableOpacity activeOpacity={0.7} onPress={showDatePicker}>
+            <Text allowFontScaling={false} style={styles.currentDate}>
+              {(selectedCategory === "Class" ? " Class Date" : selectedCategory === "Exam" ? " Exam Date" : selectedCategory === "Lab" ? " Lab Date" : selectedCategory === "Study" ? " Study Date" : selectedCategory === "Reminder" ? " Reminder Date" : " Due Date") + ": " + formatDate(selectedDate)}
+            </Text>
+          </TouchableOpacity>
           <DateTimePickerModal
             isVisible={isDatePickerVisible}
             mode="date"
@@ -629,69 +640,65 @@ const EditTaskPage = ({ navigation, route }) => {
             source={require("../../assets/AppIcons/subjecttopic.png")}
           />
 
-          <TouchableOpacity activeOpacity={0.7} onPress={showDatePicker}>
-          <Text allowFontScaling={false} style={styles.currentDate}>
-              {(selectedCategory === "Class" ? " Class Date" : selectedCategory === "Exam" ? " Exam Date" : selectedCategory === "Lab" ? " Lab Date" : selectedCategory === "Study" ? " Study Date" : selectedCategory === "Reminder" ? " Reminder Date" : " Due Date") + ": " + formatDate(selectedDate)}
-            </Text>
-          </TouchableOpacity>
+
 
           <TouchableOpacity activeOpacity={0.7} onPress={showTimePicker}>
-          <Text allowFontScaling={false} style={styles.currentTime}>
+            <Text allowFontScaling={false} style={styles.currentTime}>
               {(selectedCategory === "Class" ? "Class Time" : selectedCategory === "Exam" ? "Exam Time" : selectedCategory === "Lab" ? "Lab Time" : selectedCategory === "Study" ? "Study Time" : selectedCategory === "Reminder" ? "Reminder Time" : "Due Time") + ": " + formatTime(selectedDate)}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <CustomModalDelete 
-  isVisible={isDeleteModalVisible}
-  closeModal={() => setDeleteModalVisible(false)}
-  title={'Are you sure you want\n to delete this task?'}
-  buttonText={'Delete'}
-  buttonAction={deleteAction} // delete action is assigned here
-  buttonText2={'Cancel'}
-  buttonAction2={() => setDeleteModalVisible(false)} // closeModal action is assigned here
-/>
-       
-<CustomModal
-  isVisible={modalVisible}
-  closeModal={handleModalButtonAction} // Call the function to close the modal
-  title={modalTitle}
-  buttonText={modalButtonText}
-  buttonAction={handleModalButtonAction}
-  hasCloseButton={true}
-  width={modalWidth}
-  height={modalHeight}
-/>
+        <CustomModalDelete
+          isVisible={isDeleteModalVisible}
+          closeModal={() => setDeleteModalVisible(false)}
+          title={'Are you sure you want\n to delete this task?'}
+          buttonText={'Delete'}
+          buttonAction={deleteAction} // delete action is assigned here
+          buttonText2={'Cancel'}
+          buttonAction2={() => setDeleteModalVisible(false)} // closeModal action is assigned here
+        />
 
-<CustomModalSmall
-        isVisibleSmall={modalVisibleSmall}
-        closeModalSmall={handleModalButtonActionSmall}
-        titleSmall={modalTitleSmall}
-        buttonTextSmall={modalButtonTextSmall}
-        buttonActionSmall={handleModalButtonActionSmall}
-        hasCloseButtonSmall={true}
-      />
-      
-   
-      <CustomModalUpdate
-  isVisible={isUpdateModalVisible}
-  closeModal={() => setUpdateModalVisible(false)}
-  title={`Are you sure you want to\n update this task?`}
-  buttonText={'Update'}
-  buttonText2={'Cancel'}
-  buttonAction2={async () => {
-    await updateTask(
-      task.id,
-      selectedSubject,
-      selectedCategory,
-      Topic,
-      selectedDate,
-      formatTime(selectedDate)
-    );
-    setUpdateModalVisible(false); // Close the modal after updating
-  }}
-  buttonAction={() => setUpdateModalVisible(false)} // Close the modal
-/>
+        <CustomModal
+          isVisible={modalVisible}
+          closeModal={handleModalButtonAction} // Call the function to close the modal
+          title={modalTitle}
+          buttonText={modalButtonText}
+          buttonAction={handleModalButtonAction}
+          hasCloseButton={true}
+          width={modalWidth}
+          height={modalHeight}
+        />
+
+        <CustomModalSmall
+          isVisibleSmall={modalVisibleSmall}
+          closeModalSmall={handleModalButtonActionSmall}
+          titleSmall={modalTitleSmall}
+          buttonTextSmall={modalButtonTextSmall}
+          buttonActionSmall={handleModalButtonActionSmall}
+          hasCloseButtonSmall={true}
+        />
+
+
+        <CustomModalUpdate
+          isVisible={isUpdateModalVisible}
+          closeModal={() => setUpdateModalVisible(false)}
+          title={`Are you sure you want to\n update this task?`}
+          buttonText={'Update'}
+          buttonText2={'Cancel'}
+          buttonAction2={async () => {
+            await updateTask(
+              task.id,
+              selectedSubject,
+              selectedCategory,
+              Topic,
+              selectedDate,
+              formatTime(selectedDate)
+            );
+            setUpdateModalVisible(false); // Close the modal after updating
+          }}
+          buttonAction={() => setUpdateModalVisible(false)} // Close the modal
+        />
 
 
       </View>
@@ -717,21 +724,25 @@ const styles = StyleSheet.create({
   },
   horizontalScrollView: {
     flexDirection: "row",
-    marginLeft: 10,
-    marginRight: 10,
-    
+    marginLeft: wp("2%"),
+    marginRight: wp("2%"),
+    marginBottom: hp("2%")
+
   },
   horizontalScrollView2: {
+    marginLeft: wp("0%"),
+    marginRight: wp("2%"),
+    marginBottom: wp("0%"),
     flexDirection: "row",
   },
   taskView: {
 
     flexDirection: "row",
-   
+
   },
   taskView2: {
     flexDirection: "row",
-   
+
   },
   task: {
     backgroundColor: "#5AC0EB",
@@ -755,9 +766,6 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginRight: 10,
   },
-
-
-
   task4: {
     backgroundColor: "#5AC0EB",
     height: 44,
@@ -773,7 +781,7 @@ const styles = StyleSheet.create({
     width: 150,
     borderRadius: 15,
     marginRight: 10,
-    
+
   },
 
   tasklabel: {
@@ -790,7 +798,7 @@ const styles = StyleSheet.create({
     color: "#5AC0EB",
     left: 80,
     height: 19,
-    marginTop: 120,
+    marginTop: -hp("14%"),
     textDecorationLine: "underline"
   },
 
@@ -800,7 +808,7 @@ const styles = StyleSheet.create({
     left: 84,
     height: 19,
     color: "#5AC0EB",
-    marginTop: 100,
+    marginTop: -hp("3.4%"),
     textDecorationLine: "underline"
   },
 
@@ -820,33 +828,21 @@ const styles = StyleSheet.create({
   },
 
   calender: {
-    marginTop: 195,
+    marginTop: hp("6%"),
     backgroundColor: "#5AC0EB",
     marginLeft: 20,
     height: 50,
     width: 50,
     borderRadius: 15,
-    position: "absolute",
-    //shadowColor: "#0089C2",
-    //shadowOffset: "5",
-    // shadowOpacity: 2,
-    // shadowRadius: 1,
-    //shadowOffset: { width: 0, height: 3 },
   },
 
   time: {
-    marginTop: 275,
+    marginTop: hp("5%"),
     backgroundColor: "#5AC0EB",
     marginLeft: 20,
     height: 50,
     width: 50,
     borderRadius: 15,
-    position: "absolute",
-    //shadowColor: "#0089C2",
-    // shadowOffset: "5",
-    // shadowOpacity: 2,
-    // shadowRadius: 1,
-    // shadowOffset: { width: 0, height: 3 },
   },
 
   topBarText: {
@@ -894,13 +890,13 @@ const styles = StyleSheet.create({
     borderBottomColor: "#5AC0EB",
     borderColor: "#0089C2",
     borderWidth: 1.8,
-    width: "91%",
+    width: "92%",
     padding: 10,
     position: "absolute",
     height: 62,
     marginLeft: 18,
-    borderRadius: 20,
-    marginTop:100,
+    borderRadius: 0,
+    marginTop: 110,
   },
 
   selectsubjectinput: {
@@ -909,28 +905,29 @@ const styles = StyleSheet.create({
     borderBottomColor: "#0089C2",
     borderColor: "#5AC0EB",
     borderWidth: 1.8,
-    width: screenWidth === 414 ? "111.4%" : "116%",
+    width: wp("92%"),
+    position: "relative",
     padding: 10,
     height: 62,
     marginLeft: 18,
-    borderRadius: 20,
-    marginTop: 0,
+    borderRadius: 0,
+    marginTop: hp(-4),
     marginBottom: 20,
   },
 
   subjectInputIcon1: {
     position: "absolute",
-    height: 25,
-    width: 25,
+    height: hp(6),
+    width: wp(6),
     resizeMode: "contain",
-    marginTop: 15,
+    marginTop: hp(-3.5),
     marginLeft: 44,
   },
   subjectInputIcon2: {
     position: "absolute",
-    height: 22,
-    width: 25,
-    marginTop: 115,
+    height: hp(6),
+    width: wp(6),
+    marginTop: hp(12),
     marginLeft: 44,
     resizeMode: "contain",
   },

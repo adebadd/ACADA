@@ -1,39 +1,36 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, Image } from 'react-native';
-import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import {
-  widthPercentageToDP as wp,
-  heightPercentageToDP as hp,
-} from "react-native-responsive-screen";
+    widthPercentageToDP as wp,
+    heightPercentageToDP as hp,
+  } from "react-native-responsive-screen";
 
-
-
-const CustomModal = ({
-  isVisible,
-  closeModal,
-  title,
-  buttonText,
-  buttonAction,
-  hasCloseButton = true,
+const CustomModalBig= ({
+  isVisibleBig,
+  closeModalBig,
+  titleBig,
+  buttonTextBig,
+  buttonActionBig,
+  hasCloseButtonBig = true,
 }) => {
   return (
     <Modal
-      visible={isVisible}
+      visible={isVisibleBig}
       animationType="fade"
       transparent={true}
     >
       <View style={styles.overlay}>
         <View style={styles.modalWrapper}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>{title}</Text>
+            <Text style={styles.modalTitle}>{titleBig}</Text>
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={buttonAction}
+              onPress={buttonActionBig}
               activeOpacity={0.9}
             >
-              <Text style={styles.modalButtonText}>{buttonText}</Text>
+              <Text style={styles.modalButtonText}>{buttonTextBig}</Text>
             </TouchableOpacity>
 
           
@@ -52,19 +49,19 @@ const styles = StyleSheet.create ({
     fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "#0089C2",
-    marginTop: 32,
+    marginTop: 26,
   },
   modalButton: {
     backgroundColor: "#5AC0EB",
     borderRadius: 16,
     alignSelf: "center",
     width: 168,
-    height: hp("4%"),
-    marginTop: 20,
+    height: 40,
+    marginTop: 14,
   },
   modalButtonText: {
     fontSize: 18,
-    fontFamily: "GalanoGrotesque-Bold",
+    fontFamily: "GalanoGrotesque-Light",
     textAlign: "center",
     marginTop: 13,
     color: "white",
@@ -72,16 +69,11 @@ const styles = StyleSheet.create ({
   
   modalWrapper: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    width: 330,
-    height: 180,
+    borderRadius: 28,
+    width: 320,
+    height: hp("16%"),
     position: 'absolute', // Position it absolutely
-    top: '50%', // Center it vertically
-    left: '50%', // Center it horizontally
-    transform: [ // Use these two lines to actually center the modal
-      { translateX: -160 }, // This moves it half of its width to the left
-      { translateY: -75 }, // This moves it half of its height to the top
-    ],
+   alignSelf: "center",
   },
   
   overlay: {
@@ -103,4 +95,5 @@ const styles = StyleSheet.create ({
   },
   
   })
-export default CustomModal;
+  
+  export default CustomModalBig;

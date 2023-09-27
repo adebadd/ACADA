@@ -13,6 +13,10 @@ import { SectionList } from "react-native";
 import { ScrollView } from "react-native";
 import { getFirestore, doc, getDocs, collection, query, where, orderBy, deleteDoc, writeBatch } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from "react-native-responsive-screen";
 
 const CompletedTask = ({ navigation }) => {
   const [completedTasks, setCompletedTasks] = useState([]);
@@ -143,14 +147,15 @@ const CompletedTask = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-  
-      <View styles={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+    <TouchableOpacity onPress={() => navigation.goBack()}>
           <Image
             style={styles.backButton}
             source={require("../../assets/AppIcons/backbutton.png")}
           />
         </TouchableOpacity>
+      <View style={[styles.flexDirection= "row", ]}>
+      <Text allowFontScaling={false} style={styles.header}>Completed {"\n"}Tasks</Text>
+      
         {completedTasks.length > 0 && (
           <TouchableOpacity onPress={clearAllTasks} style={styles.clearAllButton}>
             <Text allowFontScaling={false} style={styles.clearAllButtonText}>Clear All</Text>
@@ -158,7 +163,7 @@ const CompletedTask = ({ navigation }) => {
         )}
       </View>
   
-      <Text allowFontScaling={false} style={styles.header}>Completed {"\n"}Tasks</Text>
+     
       <Text allowFontScaling={false} style={styles.header1}>
         {getTodayCompletedTasks(completedTasks).length}{" "}
         {getTodayCompletedTasks(completedTasks).length === 1 ? "task" : "tasks"} completed today
@@ -251,26 +256,28 @@ const styles = StyleSheet.create({
     flatListContainer: {
       height: 580,
       marginTop: 45,
-  
     },
     
   
     scrollViewHeight: {
       marginTop: 40,
+      marginBottom: 42,
     },
+    
     noCompletedTasksText: {
       fontSize: 24,
-      fontFamily: "GalanoGrotesque-SemiBold",
+      fontFamily: "GalanoGrotesque-Medium",
       color: "#0089C2",
       textAlign: "center",
-      marginTop: "94%", // Position the text in the center of the page
+      alignSelf: "center",
+      marginTop: hp("50%"), // Position the text in the center of the page
       alignContent: "center",
+      position: "absolute"
     },
   
     clearAllButton: {
       position: "relative",
       marginLeft: 285,
-      marginTop: 25,
       backgroundColor: "#5AC0EB",
       width: 120,
       height: 35,
@@ -292,34 +299,31 @@ const styles = StyleSheet.create({
       textAlign: "left",
       color: "#5AC0EB",
       marginLeft: 15,
-      marginTop: 110,
-      position: "absolute"
     },
   
     header1: {
       fontSize: 22,
-      fontFamily: "GalanoGrotesque-SemiBold",
+      fontFamily: "GalanoGrotesque-Medium",
       textAlign: "left",
       color: "#5AC0EB",
       marginLeft: 20,
-      marginTop: 180,
-      position: "absolute"
+      marginTop: 5,
   
     },
   
     header2: {
       fontSize: 22,
-      fontFamily: "GalanoGrotesque-SemiBold",
+      fontFamily: "GalanoGrotesque-Medium",
       textAlign: "left",
       color: "#0089C2",
       marginLeft: 20,
-      marginTop: 70,
+      marginTop: 10,
       marginBottom: -35
     },
   
     dateText: {
       fontSize: 18,
-      fontFamily: "GalanoGrotesque-SemiBold",
+      fontFamily: "GalanoGrotesque-Medium",
       textAlign: "left",
       color: "#0089C2",
       marginLeft: 20,
@@ -373,7 +377,7 @@ const styles = StyleSheet.create({
       marginLeft: 18,
       width: 25,
       resizeMode: "contain",
-  
+      marginBottom: 15,
     },
   
     taskItem: {

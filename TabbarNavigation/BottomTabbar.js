@@ -8,6 +8,8 @@ import Colors from "./constants/Colors";
 import { Image } from "react-native-animatable";
 import SchedulePage from "../MainScreens/SchedulePage";
 import SocialPage from "../MainScreens/SocialPage";
+import StudyMainPage from "../MainScreens/StudyMainPage";
+import StudyStatsPage from "../MainScreens/StudyStatsPage";
 
 
 const Tab = createBottomTabNavigator();
@@ -86,7 +88,7 @@ const TabArr = [
     route: "Study Timer",
     activeIcon: require("../assets/tabbaricons/timericon.png"),
     inActiveIcon: require("../assets/tabbaricons/clockdark.png"),
-    component: StudyTimerPage,
+    component: StudyMainPage,
   },
 
   {

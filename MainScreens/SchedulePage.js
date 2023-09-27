@@ -33,6 +33,12 @@ import {
   updateDoc
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from "react-native-responsive-screen";
+
+
 const db = getFirestore();
   const auth = getAuth();
 const itemWidth = Dimensions.get("window").width / 5;
@@ -169,6 +175,18 @@ const SchedulePage = ({ route }) => {
     return null; // or some default component
   };
 
+  
+  const currentDateIndex = GenerateDates().findIndex(
+    (item) => item.dateString === selectedDate
+  );
+  
+  useEffect(() => {
+    flatListRef.current.scrollToIndex({
+      index: currentDateIndex,
+      animated: false,
+    });
+  }, []);
+
   useEffect(() => {
     flatListRef.current.scrollToIndex({
       index: currentDateIndex,
@@ -225,7 +243,7 @@ const SchedulePage = ({ route }) => {
   useEffect(() => {
     // Call fetchTasks and store the unsubscribe function
     const unsubscribe = fetchTasks(selectedDate);
-
+  
     // Clean up the listener when the component is unmounted or the selectedDate changes
     return () => {
       unsubscribe();
@@ -314,9 +332,6 @@ const SchedulePage = ({ route }) => {
   const MemoizedTaskItem = React.memo(TaskItem);
   const renderTaskItem = ({ item }) => <MemoizedTaskItem item={item} />;
 
-  const currentDateIndex = GenerateDates().findIndex(
-    (item) => item.dateString === selectedDate
-  );
   const getItemLayout = (data, index) => ({
     length: itemWidth,
     offset: itemWidth * index,
@@ -330,7 +345,10 @@ const SchedulePage = ({ route }) => {
     offset: taskItemHeight * index,
     index,
   });
-
+  const [, forceUpdate] = useState();
+  useEffect(() => {
+      forceUpdate({});
+  }, []);
 
   const handleScrollEnd = (event) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
@@ -544,14 +562,14 @@ const styles = StyleSheet.create({
     fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "white",
-    marginTop: 9,
+    marginTop: 6,
   },
   task: {
-    marginTop: 91,
+    marginTop: 96,
     backgroundColor: "#5AC0EB",
     left: getAddTaskWidth(),
-    width: 120,
-    height: 35,
+    width: 135,
+    height: 30,
     borderRadius: 10,
     marginBottom: 200,
     borderRadius: 10,
@@ -580,7 +598,7 @@ const styles = StyleSheet.create({
   editicon: {
     height: 18,
     width: 18,
-    marginLeft: 300,
+    marginLeft: 355,
     marginTop: 34,
     resizeMode: "contain",
     position: "absolute",
@@ -618,7 +636,7 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     alignSelf: "center",
     height: 180,
-    width: 350,
+    width: 400,
     marginBottom: 25,
     paddingLeft: 10,
   },
@@ -627,9 +645,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     resizeMode: "contain",
-    marginLeft: 220,
-    marginTop: 52,
+    marginTop: 53,
     position: "absolute",
+    marginLeft: 270,
   },
 
   taskSubject: {
@@ -656,7 +674,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     marginTop: 2,
     flexWrap: 'wrap', // Add this line to enable text wrapping
-    width: '90%', // Add to set the width of the text container
+    width: '100%', // Add to set the width of the text container
   },
 
   taskTopicLine: {
@@ -686,14 +704,14 @@ const styles = StyleSheet.create({
 
   noTasksText: {
     fontSize: 24,
-    fontFamily: "GalanoGrotesque-SemiBold",
+    fontFamily: "GalanoGrotesque-Medium",
     color: "#0089C2",
     textAlign: "center",
-    marginTop: 200,
+    marginTop: 220,
     alignSelf: "center",
   },
 
   subjectIconMarginLeft: {
-    marginLeft: 210, // Or the desired amount you want to push the icon to the right
+    marginLeft: 2, // Or the desired amount you want to push the icon to the right
   },
 });

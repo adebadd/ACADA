@@ -493,6 +493,7 @@ const handleTimeChange = (time) => {
       
 <TouchableOpacity
         activeOpacity={0.76}
+        
         onPress={() => {
           saveTask(
             selectedSubject,

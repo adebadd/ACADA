@@ -6,41 +6,47 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-  import React from "react";
-  import { useEffect } from "react";
-  import { useState } from "react";
-  import { Image } from "react-native";
-  import { createNativeStackNavigator } from "@react-navigation/native-stack";
-  import moment from "moment";
-  import Greetings from "./MainAssetCode/Greetings";
-  import Swiper from "react-native-swiper";
-  import { useCallback } from "react";
-  import { useFonts } from "expo-font";
-  import { getFirestore, collection, doc, orderBy, onSnapshot, query } from 'firebase/firestore';
-  import { getAuth, onAuthStateChanged } from 'firebase/auth';
-  import { getStorage, ref, getDownloadURL } from 'firebase/storage';
-  import { Dimensions } from 'react-native';
-  const screenWidth = Dimensions.get('window').width;
+import React from "react";
+import { useEffect } from "react";
+import { useState } from "react";
+import { Image } from "react-native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import moment from "moment";
+import Greetings from "./MainAssetCode/Greetings";
+import Swiper from "react-native-swiper";
+import { useCallback } from "react";
+import { useFonts } from "expo-font";
+import { getFirestore, collection, doc, orderBy, onSnapshot, query } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getStorage, ref, getDownloadURL } from 'firebase/storage';
+import { Dimensions } from 'react-native';
+const screenWidth = Dimensions.get('window').width;
 
-  const getScheduleWidth = () => {
-    if (screenWidth === 414 ) return 395;
-    if (screenWidth === 375) return 355;
-    if (screenWidth === 430 || 428) return 410;
-    return 410;  // default value
+const getScheduleWidth = () => {
+  if (screenWidth === 414) return 395;
+  if (screenWidth === 375) return 355;
+  if (screenWidth === 430 || 428) return 410;
+  return 410;  // default value
 }
 
-const Dashboard = ({ navigation}) => {
+const getMarginTopValue = () => {
+  if (screenHeight === 896) return "120%";
+  // Add more conditions for other screen heights as needed
+  return "117%";  // default value
+}
+
+const Dashboard = ({ navigation }) => {
 
 
   const auth = getAuth();
-    const currentUser = auth.currentUser;
+  const currentUser = auth.currentUser;
   const fetchTasks = (date, setTasks) => {
-  
+
     if (!currentUser) {
       console.log("No user is currently logged in.");
       return;
     }
-  
+
     const userId = currentUser.uid;
     const selectedDate = moment(date).toDate();
     const startOfDay = new Date(selectedDate);
@@ -49,15 +55,15 @@ const Dashboard = ({ navigation}) => {
     endOfDay.setHours(23, 59, 59, 999);
     const selectedDayOfWeek = moment(date).isoWeekday();
     const now = new Date();
-  
+
     const db = getFirestore();
-  
+
     const userTasksQuery = query(
       collection(doc(db, "users", userId), "tasks"),
       orderBy("date"),
       orderBy("time")
     );
-  
+
     const unsubscribe = onSnapshot(userTasksQuery, (querySnapshot) => {
       const fetchedTasks = querySnapshot.docs
         .map((doc) => ({
@@ -72,16 +78,16 @@ const Dashboard = ({ navigation}) => {
             task.date.toDate() >= now &&
             task.isCompleted === false
         );
-  
+
       setTasks(fetchedTasks);
     });
-  
+
     // Return the unsubscribe function to clean up the listener when the component is unmounted
     return unsubscribe;
   };
 
-const firestore = getFirestore();
-const docRef = doc(firestore, "users", auth.currentUser.uid);
+  const firestore = getFirestore();
+  const docRef = doc(firestore, "users", auth.currentUser.uid);
 
 
   const [name, setName] = useState("");
@@ -105,11 +111,11 @@ const docRef = doc(firestore, "users", auth.currentUser.uid);
         setProfileImage(defaultProfileImage);
       }
     };
-  
+
     // Create a Firestore reference
-const firestore = getFirestore();
-const docRef = doc(firestore, "users", auth.currentUser.uid);
-  
+    const firestore = getFirestore();
+    const docRef = doc(firestore, "users", auth.currentUser.uid);
+
     // Listen to real-time changes
     const unsubscribe = onSnapshot(docRef, (doc) => {
       if (doc.exists) {
@@ -118,10 +124,10 @@ const docRef = doc(firestore, "users", auth.currentUser.uid);
         console.log("No such document!");
       }
     });
-  
+
     // Clean up the listener on unmount
     return () => unsubscribe();
-  
+
   }, [defaultProfileImage]); // Add defaultProfileImage to the dependency array
 
   const getTodayCompletedTasks = (tasks) => {
@@ -134,15 +140,15 @@ const docRef = doc(firestore, "users", auth.currentUser.uid);
       try {
         const auth = getAuth();
         const userId = auth.currentUser.uid;
-  
+
         const db = getFirestore();
         const taskRef = doc(db, "users", userId, "tasks", selectedTask.id);
-  
+
         await updateDoc(taskRef, {
           isCompleted: true,
           completedAt: Timestamp.now()
         });
-  
+
         setModalVisible(false);
       } catch (error) {
         console.error(error);
@@ -186,7 +192,7 @@ const docRef = doc(firestore, "users", auth.currentUser.uid);
       </View>
     );
   };
-  
+
 
   const tasksWithAddTaskButton = tasks.slice(0, 2);
   tasksWithAddTaskButton.push({ isAddTaskButton: true });
@@ -209,7 +215,7 @@ const docRef = doc(firestore, "users", auth.currentUser.uid);
 
   useEffect(() => {
     setDefaultProfileImage(Image.resolveAssetSource(require("../assets/AppIcons/profileicon1.png")).uri);
-}, []);
+  }, []);
 
 
   const renderSwiperItem = (item) => {
@@ -229,29 +235,29 @@ const docRef = doc(firestore, "users", auth.currentUser.uid);
     };
   }, []);
 
-  
+
 
   const Stack = createNativeStackNavigator();
- 
-useEffect(() => {
-  const auth = getAuth();
-  const userId = auth.currentUser.uid;
 
-  const db = getFirestore();
-  const userRef = doc(db, "users", userId);
+  useEffect(() => {
+    const auth = getAuth();
+    const userId = auth.currentUser.uid;
 
-  const unsubscribe = onSnapshot(userRef, (snapshot) => {
+    const db = getFirestore();
+    const userRef = doc(db, "users", userId);
+
+    const unsubscribe = onSnapshot(userRef, (snapshot) => {
       if (snapshot.exists()) {
-          setName(snapshot.data().firstName);
+        setName(snapshot.data().firstName);
       } else {
-          console.log("User does not exist");
+        console.log("User does not exist");
       }
-  });
+    });
 
-  // Clean up the listener on unmount
-  return () => unsubscribe();
-  
-}, []);
+    // Clean up the listener on unmount
+    return () => unsubscribe();
+
+  }, []);
 
   const handleTabChange = (index) => {
     setActiveTab(index);
@@ -268,18 +274,18 @@ useEffect(() => {
     );
 
     const unsubscribe = onSnapshot(subjectsQuery, (querySnapshot) => {
-        const subjects = querySnapshot.docs.map(doc => {
-            const subject = doc.data();
-            subject.id = doc.id;
-            return subject;
-        });
-        setSubjects(subjects);
+      const subjects = querySnapshot.docs.map(doc => {
+        const subject = doc.data();
+        subject.id = doc.id;
+        return subject;
+      });
+      setSubjects(subjects);
     });
 
     // Clean up the listener on unmount
     return () => unsubscribe();
-    
-}, []);
+
+  }, []);
 
 
   {
@@ -327,7 +333,7 @@ useEffect(() => {
         <Text allowFontScaling={false} style={[styles.taskCategory, isLongTopic(task.topic) && styles.Long]}>
           {task.category}
         </Text>
-        <Text allowFontScaling={false} style={[styles.taskTopic, isLongTopic(task.topic) && styles.Long , {width: 150}, {flexShrink: 1}]}>
+        <Text allowFontScaling={false} style={[styles.taskTopic, isLongTopic(task.topic) && styles.Long, { width: 150 }, { flexShrink: 1 }]}>
           {task.topic}
         </Text>
         <Text allowFontScaling={false} style={[styles.taskDueDate, isLongTopic(task.topic) && styles.Long]}>
@@ -360,28 +366,28 @@ useEffect(() => {
     <SafeAreaView style={styles.container}>
       <View>
         <View style={styles.greetingsContainer}>
-        <Text allowFontScaling={false} style={styles.greetingsText}>
+          <Text allowFontScaling={false} style={styles.greetingsText}>
             <Greetings />
           </Text>
           <Text allowFontScaling={false} style={styles.greetingsTextName}>{name}</Text>
         </View>
 
         <View style={styles.headerIconContainer}>
-        <TouchableOpacity
-    activeOpacity={0.8}
-    style={styles.profileIcon1}
-    onPress={() => navigation.navigate("User Profile")}
->
-    <Image
-        style={styles.profileIcon}
-        source={{ uri: profileImage }}
-    />
-</TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.profileIcon1}
+            onPress={() => navigation.navigate("User Profile")}
+          >
+            <Image
+              style={styles.profileIcon}
+              source={{ uri: profileImage }}
+            />
+          </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.navigate("Completed Task")}
-            style = {styles.completedTask}
+            style={styles.completedTask}
           >
             <Image
               style={styles.completedtaskIcon}
@@ -390,7 +396,7 @@ useEffect(() => {
           </TouchableOpacity>
         </View>
 
-        <Text allowFontScaling={false} style={[styles.header, styles.spacing [{}]]}>Subjects</Text>
+        <Text allowFontScaling={false} style={[styles.header, styles.spacing[{}]]}>Subjects</Text>
         <Text allowFontScaling={false} style={styles.header1}>Your current subjects</Text>
 
         <View style={styles.subjectContainer}>
@@ -446,56 +452,56 @@ useEffect(() => {
         </View>
 
         <View style={styles.scheduleContainer}>
-        <Text allowFontScaling={false} style={styles.header}>Schedule</Text>
-        <Text allowFontScaling={false} style={styles.header1}>Upcoming tasks and study goals</Text>
+          <Text allowFontScaling={false} style={styles.header}>Schedule</Text>
+          <Text allowFontScaling={false} style={styles.header1}>Upcoming tasks and study goals</Text>
 
-        <ScrollView
-      horizontal={true}
-      pagingEnabled={true}
-      showsHorizontalScrollIndicator={false}
-      style={styles.snappableScrollView}
-    >
-          <View style={styles.schedule}>
-            {tasks.length > 0 ? (
-              <Swiper
-                showsPagination
-                horizontal={false}
-                dotColor="rgba(255, 255, 255, 0.3)"
-                activeDotColor="white"
-                style={styles.swiper}
-                paginationStyle={{
-                  position: "absolute",
-                  marginRight: 10,
-                  marginBottom: 100,
-                }}
-                dotStyle={{ transform: [{ rotate: "90deg" }] }}
-                activeDotStyle={{ transform: [{ rotate: "90deg" }] }}
-                autoplay={false}
-                autoplayTimeout={2.5}
-                autoplayDirection={true}
-                removeClippedSubviews={false}
-                onIndexChanged={(index) => {
+          <ScrollView
+            horizontal={true}
+            pagingEnabled={true}
+            showsHorizontalScrollIndicator={false}
+            style={styles.snappableScrollView}
+          >
+            <View style={styles.schedule}>
+              {tasks.length > 0 ? (
+                <Swiper
+                  showsPagination
+                  horizontal={false}
+                  dotColor="rgba(255, 255, 255, 0.3)"
+                  activeDotColor="white"
+                  style={styles.swiper}
+                  paginationStyle={{
+                    position: "absolute",
+                    marginRight: 10,
+                    marginBottom: 100,
+                  }}
+                  dotStyle={{ transform: [{ rotate: "90deg" }] }}
+                  activeDotStyle={{ transform: [{ rotate: "90deg" }] }}
+                  autoplay={false}
+                  autoplayTimeout={2.5}
+                  autoplayDirection={true}
+                  removeClippedSubviews={false}
+                  onIndexChanged={(index) => {
 
-                }}
-              >
-                {tasksWithAddTaskButton.map((item, index) => (
-                  <React.Fragment key={index}>{renderSwiperItem(item)}</React.Fragment>
-                ))}
-              </Swiper>
-            ) : (
-              renderAddTaskButton()
-            )}
-          </View>
-          <TouchableOpacity
-        style={styles.touchableContainer}
-        onPress={() => {
-          // ... handle your touchable press here ...
-        }}
-      >
-        {/* Content of the touchable */}
-        <Text>My Touchable Content</Text>
-      </TouchableOpacity>
-    </ScrollView>
+                  }}
+                >
+                  {tasksWithAddTaskButton.map((item, index) => (
+                    <React.Fragment key={index}>{renderSwiperItem(item)}</React.Fragment>
+                  ))}
+                </Swiper>
+              ) : (
+                renderAddTaskButton()
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.touchableContainer}
+              onPress={() => {
+                // ... handle your touchable press here ...
+              }}
+            >
+              {/* Content of the touchable */}
+              <Text>My Touchable Content</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
 
@@ -509,21 +515,22 @@ export default Dashboard;
 
 
 const styles = StyleSheet.create({
-  
+
   headerIconContainer: {
     flexDirection: "row",
   },
-  profileIcon1:{
+  profileIcon1: {
     width: 50,
     height: 50,
   },
-  completedTask:{
+  completedTask: {
     width: 50,
     height: 50,
     marginLeft: 290
   },
   container: {
     backgroundColor: "white",
+    height: "100%"
   },
 
   swiper: {
@@ -562,7 +569,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 
-  
+
   snappableScrollView: {
     flexDirection: 'row',
     width: '100%',
@@ -672,7 +679,7 @@ const styles = StyleSheet.create({
     color: "#5AC0EB",
   },
   subjectstext: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: "GalanoGrotesque-Medium",
     textAlign: "center",
     color: "white",
@@ -748,7 +755,7 @@ const styles = StyleSheet.create({
   },
 
   Long: {
-    top:  -4,
+    top: -4,
   },
   schedule: {
     marginTop: 10,
